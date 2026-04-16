@@ -7,7 +7,7 @@ import { ArrowLeft, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function FootprintsPage() {
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const router = useRouter();
   const [footprints, setFootprints] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,9 +21,7 @@ export default function FootprintsPage() {
 
     const fetchFootprints = async () => {
       setIsLoading(true);
-      // We need to resolve the sns_profiles ID if user.id is a casts ID, 
-      // but usually profile.id is the sns_profiles ID.
-      const snsProfileId = profile?.id || user.id;
+      const snsProfileId = user.id;
 
       const { data, error } = await supabase
         .from('sns_footprints')
@@ -63,7 +61,7 @@ export default function FootprintsPage() {
     };
 
     fetchFootprints();
-  }, [user, profile, router]);
+  }, [user, router]);
 
   const handleSendLike = async (viewerId: string, viewerName: string) => {
       if (likedFootprintIds.has(viewerId)) return;
@@ -71,13 +69,15 @@ export default function FootprintsPage() {
       // Update local state immediately
       setLikedFootprintIds(prev => new Set(prev).add(viewerId));
       
+      if (!user) return;
+      
       // Insert LIKE into messages to bypass sns_notifications RLS
       const { error: notifError } = await supabase
         .from('sns_messages')
         .insert({
            sender_id: user.id,
            receiver_id: viewerId,
-           content: `[SYSTEM_LIKE]${profile?.name || 'キャスト'}さんからいいねが届いています！早速チェックしてみて！`,
+           content: `[SYSTEM_LIKE]${user?.name || 'キャスト'}さんからいいねが届いています！早速チェックしてみて！`,
            is_read: false
         });
       if (notifError) console.error("Notification insert error:", notifError);
@@ -136,7 +136,7 @@ export default function FootprintsPage() {
                   </div>
                 </div>
                 
-                {item.viewer_id !== (profile?.id || user?.id) && (
+                {item.viewer_id !== user?.id && (
                   likedFootprintIds.has(item.viewer_id) ? (
                     <button disabled className="shrink-0 text-[10px] tracking-widest font-bold px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] text-[#777777]">
                       いいね済
