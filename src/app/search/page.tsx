@@ -420,28 +420,26 @@ export default function SearchPage() {
                         
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
                         
-                        {cast.isNew && (
-                            <div className="absolute top-3 right-3 z-20 pointer-events-none">
-                                <div className="bg-[#22C55E] text-white text-[9px] font-bold px-2.5 py-1 tracking-[0.2em] shadow-lg flex items-center justify-center gap-1.5">
-                                    <span style={{ textShadow: "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff" }} className="text-[11px]">🔰</span>
-                                    NEW FACE
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
+                        <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-none max-w-[calc(100%-24px)]">
                             {cast.isWorkingToday ? (
                                 cast.statusText === '受付終了' ? (
                                     <div className="bg-black/70 backdrop-blur text-[#E5E5E5] text-[9px] px-2 py-1 font-bold tracking-widest border border-white/20">
                                         受付終了
                                     </div>
                                 ) : (
-                                    <div className="bg-white/90 backdrop-blur text-black text-[9px] px-2 py-1 font-bold tracking-widest flex items-center gap-1 shadow-sm border border-white">
-                                        <span className={`w-1.5 h-1.5 rounded-none ${cast.nextAvailableTime === '待機中' ? 'bg-[#E02424] animate-[pulse_2s_ease-in-out_infinite]' : 'bg-black'}`}></span>
-                                        {cast.nextAvailableTime === '待機中' ? '待機中' : `次回 ${cast.nextAvailableTime}〜`}
+                                    <div className="bg-white/90 backdrop-blur text-black text-[9px] px-2 py-1 font-bold tracking-widest flex items-center gap-1 shadow-sm border border-white whitespace-nowrap">
+                                        <span className={`w-1.5 h-1.5 shrink-0 rounded-none ${cast.nextAvailableTime === '待機中' ? 'bg-[#E02424] animate-[pulse_2s_ease-in-out_infinite]' : 'bg-black'}`}></span>
+                                        <span className="truncate">{cast.nextAvailableTime === '待機中' ? '待機中' : `次回 ${cast.nextAvailableTime}〜`}</span>
                                     </div>
                                 )
                             ) : null}
+
+                            {cast.isNew && (
+                                <div className="bg-[#22C55E] text-white text-[9px] font-bold px-2.5 py-1 tracking-[0.2em] shadow-lg flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                    <span style={{ textShadow: "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff" }} className="text-[11px]">🔰</span>
+                                    NEW FACE
+                                </div>
+                            )}
                         </div>
 
                         <div className="absolute bottom-4 left-4">
