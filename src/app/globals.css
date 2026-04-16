@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #000000;
+  --color-primary-light: #333333;
+  --color-primary-dark: #000000;
+
+  --color-secondary: #777777;
+  --color-secondary-light: #E5E5E5;
+  --color-secondary-dark: #333333;
+
+  --color-background: #FFFFFF;
+  --color-foreground: #000000;
+  --color-muted: #888888;
+  --color-border: #EEEEEE;
+
+  --animate-ring: ring 0.6s ease-in-out infinite;
+
+  @keyframes ring {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-20deg); }
+    75% { transform: rotate(20deg); }
+  }
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    font-weight: 300;
+    
+    /* Anti-Screenshot / Anti-Save Measures */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Allow text selection only inside inputs and textareas */
+  input, textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+
+  /* Disable image drag and save prompt */
+  img, video {
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+}
+
+/* Premium utility classes */
+@utility premium-card {
+  background-color: #ffffff;
+  border-radius: 0px;
+  box-shadow: none;
+  border: 1px solid #E5E5E5;
+  transition: all 0.3s ease;
+}
+
+@utility premium-btn {
+  background-color: #000000;
+  color: #FFFFFF;
+  border-radius: 0px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+  border: 1px solid #000000;
+}
+
+@utility premium-btn-hover {
+  background-color: #FFFFFF;
+  color: #000000;
+}
+
+@utility premium-btn-outline {
+  background-color: #FFFFFF;
+  color: #000000;
+  border-radius: 0px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+  border: 1px solid #000000;
+}
+
+@utility premium-btn-outline-hover {
+  background-color: #000000;
+  color: #FFFFFF;
+}
+
+/* Mobile-only random hover effect for search screen */
+@media (max-width: 768px) {
+  @keyframes shimmer-grayscale {
+    0%, 15% { filter: grayscale(100%); -webkit-filter: grayscale(100%); }
+    45%, 55% { filter: grayscale(0%); -webkit-filter: grayscale(0%); }
+    85%, 100% { filter: grayscale(100%); -webkit-filter: grayscale(100%); }
+  }
+  .mobile-color-pulse {
+    animation: shimmer-grayscale var(--pulse-dur, 12s) infinite var(--pulse-delay, 0s) ease-in-out !important;
+  }
+}

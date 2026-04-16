@@ -1,0 +1,567 @@
+"use client";
+import { useState, useEffect, use } from 'react';
+import Link from 'next/link';
+import { ChevronLeft, Check, CalendarDays, KeyRound, Clock } from "lucide-react";
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+
+// Helper to parse time string "HH:MM" to minutes since start of day (06:00 is base 360, 01:00 is 25:00=1500)
+const parseMins = (t: any) => {
+    if (!t) return 0;
+    const str = String(t);
+    let parts = str.split(':').map(Number);
+    let h = parts[0] || 0;
+    let m = parts[1] || 0;
+    if (h < 6) h += 24; // Midnight to 5 AM treated as next day
+    return h * 60 + m;
+};
+
+// Helper: formater
+const formatTimeLabel = (mins: number) => {
+    const h = Math.floor(mins / 60) % 24;
+    const m = mins % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
+
+export default function ReservationPage({ params }: { params: Promise<{ castId: string }> }) {
+    const { castId } = use(params);
+    const router = useRouter();
+    
+    // UI steps
+    const [step, setStep] = useState(1);
+    const [isLoading, setIsLoading] = useState(true);
+    
+    // DB Data
+    const [cast, setCast] = useState<any>(null);
+    const [availableDates, setAvailableDates] = useState<string[]>([]);
+    const [courses, setCourses] = useState<any[]>([]);
+    
+    // User Selections
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [selectedCourseItem, setSelectedCourseItem] = useState<any | null>(null);
+    const [selectedNomination, setSelectedNomination] = useState<any | null>(null);
+    const [selectedOptions, setSelectedOptions] = useState<any[]>([]);
+    const [selectedDiscount, setSelectedDiscount] = useState<any | null>(null);
+    const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    
+    // Dynamic Slots calculation
+    const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+    const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+    // 1. Initial Data Fetch
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            setIsLoading(true);
+            
+            // Get Cast & Store info (Try cast ID first)
+            let castData = null;
+            const { data: directCast } = await supabase
+                .from('casts')
+                .select('id, name, store_id, phone, back_settings')
+                .eq('id', castId)
+                .maybeSingle();
+                
+            castData = directCast;
+
+            // If not found, try to look up via sns_profiles
+            if (!castData) {
+                const { data: profile } = await supabase
+                    .from('sns_profiles')
+                    .select('id, phone, name')
+                    .eq('id', castId)
+                    .maybeSingle();
+                    
+                if (profile && profile.phone) {
+                    const { data: mappedCast } = await supabase
+                        .from('casts')
+                        .select('id, name, store_id, phone, back_settings')
+                        .eq('phone', profile.phone)
+                        .maybeSingle();
+                    
+                    if (mappedCast) {
+                        castData = mappedCast;
+                    } else {
+                        // Fallback using profile name
+                        castData = { id: castId, name: profile.name || "キャスト", store_id: null };
+                    }
+                }
+            }
+                
+            let activeStoreId = castData?.store_id || 'f0fc1c42-4523-4b15-b834-faae5250c115';
+            
+            // Set dummy cast name if not found
+            setCast(castData || { id: castId, name: "キャスト", store_id: activeStoreId });
+            
+            // Fetch masters (courses, options, discounts, nominations) using resolved store_id (strict match)
+            const { data: mastersData } = await supabase
+                .from('masters')
+                .select('*')
+                .eq('store_id', activeStoreId)
+                .eq('is_active', true)
+                .eq('is_visible', true)
+                .order('sort_order', { ascending: true });
+                    
+                if (mastersData) {
+                    setCourses(mastersData.filter(m => m.type && ['COURSE', 'OPTION', 'DISCOUNT', 'NOMINATION'].includes(m.type.toUpperCase())));
+                }
+
+                // Fetch shifts for the next 14 days via RPC (bypasses RLS safely)
+                const next14DaysPromises = Array.from({length: 14}, async (_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + i);
+                    const dateStr = d.toLocaleDateString('sv-SE').split('T')[0]; 
+                    
+                    const { data } = await supabase.rpc('get_public_availability', {
+                        p_store_id: activeStoreId,
+                        p_date: dateStr
+                    });
+                    
+                    const shift = data?.find((s: any) => s.cast_id === castId);
+                    if (shift && shift.attendance_status !== 'absent' && shift.shift_start && shift.shift_end) {
+                        return dateStr;
+                    }
+                    return null;
+                });
+                
+                const next14DaysResults = await Promise.all(next14DaysPromises);
+                const uniqueDates = next14DaysResults.filter(Boolean) as string[];
+                setAvailableDates(uniqueDates);
+            
+            setIsLoading(false);
+        };
+        fetchInitialData();
+    }, [castId]);
+
+    // 2. Fetch specific availability when Date AND Course are selected (on Step 3 mount or when data changes)
+    useEffect(() => {
+        const calculateSlots = async () => {
+            if (!cast || !selectedDate || !selectedCourseItem) return;
+            setIsLoadingSlots(true);
+            
+            try {
+                // Fetch availability RPC (which includes shift info and bookings for that date)
+                const { data: availData } = await supabase.rpc('get_public_availability', {
+                    p_store_id: cast.store_id,
+                    p_date: selectedDate
+                });
+                
+                if (availData && availData.length > 0) {
+                    // Get all rows for this cast to extract multiple bookings
+                    const castRows = availData.filter((a: any) => a.cast_id === castId);
+                    
+                    if (castRows.length > 0 && castRows[0].shift_start && castRows[0].shift_end) {
+                        const baseShift = castRows[0];
+                        let sStart = parseMins(baseShift.shift_start);
+                        const sEnd = parseMins(baseShift.shift_end);
+                        
+                        // Extract all bookings for this day
+                        const activeBookings = castRows
+                            .filter((r: any) => r.booked_start && r.booked_end)
+                            .map((r: any) => ({
+                                start: r.booked_start,
+                                end: r.booked_end
+                            }));
+                        
+                        // If selectedDate is today, ensure we don't show past times
+                        const now = new Date();
+                        const todayStr = now.toLocaleDateString('sv-SE').split('T')[0];
+                        if (selectedDate === todayStr) {
+                            const currentMins = now.getHours() * 60 + now.getMinutes();
+                            const adjCurrentMins = now.getHours() < 6 ? currentMins + 24 * 60 : currentMins;
+                            // 現在時刻より少し余裕を持たせて10分単位で丸める
+                            const roundedNow = Math.ceil(adjCurrentMins / 10) * 10;
+                            if (roundedNow > sStart) {
+                                sStart = roundedNow;
+                            }
+                        }
+                        
+                        const baseDur = Number(selectedCourseItem?.duration) || 60;
+                        const optDur = selectedOptions.reduce((sum, o) => sum + (Number(o.duration) || 0), 0);
+                        const nomDur = Number(selectedNomination?.duration) || 0;
+                        const requiredMins = baseDur + optDur + nomDur + 10; // Total time + 10 mins buffer
+                        
+                        const candidateSet = new Set<number>();
+                        
+                        // 1. Base 30-min intervals
+                        let current30 = sStart;
+                        if (current30 % 30 !== 0) {
+                            current30 = current30 + (30 - (current30 % 30));
+                        }
+                        let safety = 0;
+                        while (current30 + requiredMins <= sEnd && safety < 100) {
+                            safety++;
+                            candidateSet.add(current30);
+                            current30 += 30;
+                        }
+                        
+                        // 2. Exact fit slots (Smart Slots)
+                        for (const b of activeBookings) {
+                            const bStart = parseMins(b.start);
+                            const bEnd = parseMins(b.end);
+                            const bEndWithBuffer = bEnd + 10; // 前の予約の片付け時間（10分）を考慮
+                            
+                            // Immediately after previous booking ends
+                            if (bEndWithBuffer >= sStart && bEndWithBuffer + requiredMins <= sEnd) {
+                                candidateSet.add(bEndWithBuffer);
+                            }
+                            
+                            // Exactly before next booking starts
+                            const perfectStart = bStart - requiredMins;
+                            if (perfectStart >= sStart && perfectStart + requiredMins <= sEnd) {
+                                candidateSet.add(perfectStart);
+                            }
+                        }
+                        
+                        // 3. Filter overlapping and sort
+                        const validSlots = Array.from(candidateSet).filter(cStart => {
+                            const cEnd = cStart + requiredMins;
+                            for (const b of activeBookings) {
+                                const bStart = parseMins(b.start);
+                                const bEnd = parseMins(b.end);
+                                const bEndWithBuffer = bEnd + 10;
+                                // Check overlap
+                                if (cStart < bEndWithBuffer && cEnd > bStart) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        }).sort((a, b) => a - b).map(mins => formatTimeLabel(mins));
+                        
+                        setAvailableSlots(validSlots);
+                    } else {
+                        setAvailableSlots([]);
+                    }
+                } else {
+                    setAvailableSlots([]);
+                }
+            } catch (err) {
+                console.error("Error calculating slots:", err);
+                setAvailableSlots([]);
+            } finally {
+                setIsLoadingSlots(false);
+            }
+        };
+        
+        if (step === 3) {
+            calculateSlots();
+        }
+    }, [step, selectedDate, selectedCourseItem, selectedOptions, selectedNomination, cast, castId]);
+
+    const handleNext = () => {
+        if (step === 2) {
+            const hasCourse = courses.some(c => c.type?.toUpperCase() === 'COURSE');
+            const hasNomination = courses.some(c => c.type?.toUpperCase() === 'NOMINATION');
+            
+            if (hasCourse && !selectedCourseItem) {
+                setErrorMsg('コースが選択されていません');
+                return;
+            }
+            if (hasNomination && !selectedNomination) {
+                setErrorMsg('指名が選択されていません');
+                return;
+            }
+        }
+        if (step < 4) setStep(step + 1);
+    }
+
+    const formatDateStr = (dStr: string) => {
+        const d = new Date(dStr);
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        return `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
+    };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-white flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-white pb-40 font-light">
+            {/* Header */}
+            <header className="sticky top-0 z-40 bg-white border-b border-[#E5E5E5] flex items-center px-4 py-4">
+                <button onClick={() => {
+                    if (step > 1) {
+                        setStep(step - 1);
+                    } else {
+                        router.back();
+                    }
+                }} className="text-black hover:text-[#777777] p-2">
+                    <ChevronLeft size={24} className="stroke-[1.5]" />
+                </button>
+                <div className="flex-1 text-center font-normal text-sm pr-10 tracking-widest font-bold">
+                    予約する
+                </div>
+            </header>
+
+            {/* Progress Bar */}
+            <div className="px-6 py-6 pb-2">
+                <div className="flex justify-between relative max-w-[300px] mx-auto">
+                    <div className="absolute top-1/2 left-0 w-full h-[1px] bg-[#E5E5E5] -z-10 -translate-y-1/2"></div>
+                    <div className="absolute top-1/2 left-0 h-[1px] bg-black -z-10 -translate-y-1/2 transition-all duration-500" style={{ width: `${(step - 1) * 33.3}%`}}></div>
+                    
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center font-medium text-[10px] transition-colors bg-white border ${step >= i ? 'border-black text-black' : 'border-[#E5E5E5] text-[#E5E5E5]'}`}>
+                            {step > i ? <Check size={12} className="stroke-[2]" /> : i}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <main className="px-6 py-4">
+                {/* STEP 1: DATE */}
+                {step === 1 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <h2 className="text-sm font-normal tracking-widest border-b border-black pb-2 flex items-center gap-3">
+                            <CalendarDays size={18} className="stroke-[1.5]" />
+                            ご来店日の選択
+                        </h2>
+                        
+                        {availableDates.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-3">
+                                {availableDates.map(date => (
+                                    <button 
+                                        key={date}
+                                        onClick={() => setSelectedDate(date)}
+                                        className={`py-4 text-sm font-medium tracking-widest transition-all border ${selectedDate === date ? 'bg-black text-white border-black shadow-md' : 'bg-white text-black border-[#E5E5E5] hover:border-black'}`}
+                                    >
+                                        {formatDateStr(date)}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-10 text-center text-[#777777] text-xs tracking-widest">
+                                現在、予約可能な日程がありません。
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* STEP 2: COURSE */}
+                {step === 2 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <h2 className="text-sm font-normal tracking-widest border-b border-black pb-2 flex items-center gap-3">
+                            <KeyRound size={18} className="stroke-[1.5]" />
+                            コース・指名の選択
+                        </h2>
+                        
+                        {courses.length > 0 ? (
+                            <div className="space-y-8">
+                                {['COURSE', 'NOMINATION', 'OPTION', 'DISCOUNT'].map(type => {
+                                    let items = courses.filter(c => c.type?.toUpperCase() === type);
+                                    
+                                    // キャストのback_settingsで対応可能（金額設定あり）なオプションのみに絞り込む
+                                    if (type === 'OPTION' && cast?.back_settings) {
+                                        items = items.filter(course => Object.keys(cast.back_settings).includes(course.label || course.name));
+                                    }
+                                    
+                                    if (items.length === 0) return null;
+                                    
+                                    const title = type === 'COURSE' ? 'コース' : type === 'NOMINATION' ? '指名' : type === 'OPTION' ? 'オプション' : '割引';
+                                    
+                                    return (
+                                        <div key={type} className="space-y-3">
+                                            <h3 className="text-xs font-bold tracking-widest text-[#333333] border-l-2 border-black pl-2">{title}</h3>
+                                            <div className="space-y-3">
+                                                {items.map(course => {
+                                                    let isSelected = false;
+                                                    if (type === 'COURSE') isSelected = selectedCourseItem?.id === course.id;
+                                                    else if (type === 'NOMINATION') isSelected = selectedNomination?.id === course.id;
+                                                    else if (type === 'DISCOUNT') isSelected = selectedDiscount?.id === course.id;
+                                                    else if (type === 'OPTION') isSelected = selectedOptions.some(o => o.id === course.id);
+
+                                                    const toggleSelection = () => {
+                                                        if (type === 'COURSE') setSelectedCourseItem(isSelected ? null : course);
+                                                        else if (type === 'NOMINATION') setSelectedNomination(isSelected ? null : course);
+                                                        else if (type === 'DISCOUNT') setSelectedDiscount(isSelected ? null : course);
+                                                        else if (type === 'OPTION') {
+                                                            if (isSelected) setSelectedOptions(prev => prev.filter(o => o.id !== course.id));
+                                                            else setSelectedOptions(prev => [...prev, course]);
+                                                        }
+                                                    };
+
+                                                    return (
+                                                        <button 
+                                                            key={course.id}
+                                                            onClick={toggleSelection}
+                                                            className={`w-full p-5 border text-left flex items-center justify-between transition-all ${isSelected ? 'bg-black text-white border-black' : 'bg-white text-black border-[#E5E5E5] hover:border-black hover:bg-[#F9F9F9]'}`}
+                                                        >
+                                                            <div>
+                                                                <h3 className="font-medium text-sm tracking-widest mb-1">{course.label || course.name}</h3>
+                                                                {course.duration ? <span className={`text-[10px] tracking-widest ${isSelected ? 'text-white/70' : 'text-[#777777]'}`}>{course.duration}分</span> : null}
+                                                            </div>
+                                                            <div className="font-normal text-lg tracking-wider">
+                                                                {course.price > 0 ? `¥${course.price.toLocaleString()}` : course.price < 0 ? `-¥${Math.abs(course.price).toLocaleString()}` : '無料'}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="py-10 text-center text-[#777777] text-xs tracking-widest">
+                                コース情報が登録されていません。
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* STEP 3: TIME */}
+                {step === 3 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <h2 className="text-sm font-normal tracking-widest border-b border-black pb-2 flex items-center gap-3">
+                            <Clock size={18} className="stroke-[1.5]" />
+                            ご来店時間の選択
+                        </h2>
+                        
+                        <div className="bg-[#F9F9F9] border border-[#E5E5E5] p-6 text-center">
+                            <p className="text-[10px] text-[#777777] tracking-widest mb-6 leading-loose">
+                                {selectedDate && formatDateStr(selectedDate)}<br/>
+                                {selectedCourseItem?.label || selectedCourseItem?.name} <br/>
+                                が予約可能な時間枠です。
+                            </p>
+                            
+                            {isLoadingSlots ? (
+                                <div className="py-10 flex justify-center">
+                                    <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            ) : availableSlots.length > 0 ? (
+                                <div className="grid grid-cols-3 gap-2">
+                                    {availableSlots.map(slot => (
+                                        <button 
+                                            key={slot}
+                                            onClick={() => setSelectedSlot(slot)}
+                                            className={`py-3 text-sm font-medium tracking-widest transition-all border ${selectedSlot === slot ? 'bg-black text-white border-black' : 'bg-white text-black border-[#E5E5E5] hover:border-black'}`}
+                                        >
+                                            {slot}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-8 text-center text-[#E02424] text-xs tracking-widest border border-[#E02424] bg-red-50">
+                                    この日のこのコースの十分な空き枠がありません。<br/>別の日程または短いコースをお試しください。
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 4: CONFIRM */}
+                {step === 4 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <h2 className="text-sm font-normal tracking-widest border-b border-black pb-2 flex items-center gap-3">
+                            <Check size={18} className="stroke-[1.5]" />
+                            予約内容の確認
+                        </h2>
+                        
+                        <div className="border border-[#E5E5E5] p-6 space-y-6 bg-[#F9F9F9]">
+                            <div className="flex flex-col border-b border-[#E5E5E5] pb-4">
+                                <span className="text-[#777777] text-[10px] tracking-widest mb-1">指名キャスト</span>
+                                <span className="font-normal text-base uppercase tracking-widest">{cast?.name}</span>
+                            </div>
+                            <div className="flex flex-col border-b border-[#E5E5E5] pb-4">
+                                <span className="text-[#777777] text-[10px] tracking-widest mb-1">来店日時</span>
+                                <span className="font-normal text-base uppercase tracking-widest">
+                                    {selectedDate ? formatDateStr(selectedDate) : ''} {selectedSlot}
+                                </span>
+                            </div>
+                            {selectedCourseItem && (
+                                <div className="flex flex-col pb-4 border-b border-[#E5E5E5]">
+                                    <span className="text-[#777777] text-[10px] tracking-widest mb-1">コース</span>
+                                    <span className="font-normal text-base tracking-widest">{selectedCourseItem.label || selectedCourseItem.name}</span>
+                                    <span className="mt-1 text-sm tracking-wide">{selectedCourseItem.price > 0 ? `¥${selectedCourseItem.price.toLocaleString()}` : '無料'}</span>
+                                </div>
+                            )}
+                            {selectedNomination && (
+                                <div className="flex flex-col pb-4 border-b border-[#E5E5E5] pt-4">
+                                    <span className="text-[#777777] text-[10px] tracking-widest mb-1">指名</span>
+                                    <span className="font-normal text-base tracking-widest">{selectedNomination.label || selectedNomination.name}</span>
+                                    <span className="mt-1 text-sm tracking-wide">{selectedNomination.price > 0 ? `¥${selectedNomination.price.toLocaleString()}` : '無料'}</span>
+                                </div>
+                            )}
+                            {selectedOptions.length > 0 && (
+                                <div className="flex flex-col pb-4 border-b border-[#E5E5E5] pt-4">
+                                    <span className="text-[#777777] text-[10px] tracking-widest mb-1">オプション</span>
+                                    {selectedOptions.map(o => (
+                                        <div key={o.id} className="flex justify-between items-center mb-1 text-base tracking-widest">
+                                            <span>{o.label || o.name}</span>
+                                            <span>{o.price > 0 ? `¥${o.price.toLocaleString()}` : '無料'}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {selectedDiscount && (
+                                <div className="flex flex-col pb-4 border-b border-[#E5E5E5] pt-4">
+                                    <span className="text-[#e23c3c] text-[10px] tracking-widest mb-1">割引</span>
+                                    <span className="font-normal text-base tracking-widest text-[#e23c3c]">{selectedDiscount.label || selectedDiscount.name}</span>
+                                    <span className="mt-1 text-sm tracking-wide text-[#e23c3c]">{selectedDiscount.price < 0 ? `-¥${Math.abs(selectedDiscount.price).toLocaleString()}` : '無料'}</span>
+                                </div>
+                            )}
+                            <div className="flex flex-col pb-2 pt-4">
+                                <span className="text-[#777777] text-[10px] tracking-widest mb-1">合計予定額</span>
+                                <span className="mt-1 text-2xl font-normal tracking-wide">
+                                    {(()=>{
+                                        const cPrice = selectedCourseItem?.price || 0;
+                                        const nPrice = selectedNomination?.price || 0;
+                                        const oPrice = selectedOptions.reduce((sum, o) => sum + (o.price || 0), 0);
+                                        const dPrice = selectedDiscount?.price || 0;
+                                        const total = cPrice + nPrice + oPrice + dPrice;
+                                        return `¥${Math.max(0, total).toLocaleString()}`;
+                                    })()}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="bg-black p-5 text-[10px] text-white tracking-widest uppercase leading-relaxed font-light text-center">
+                            ご予約確定後、詳細をお送りいたします。キャンセルは開始1時間前まで可能です。
+                        </div>
+                    </div>
+                )}
+            </main>
+
+            {errorMsg && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white p-6 shadow-xl max-w-sm w-full text-center space-y-4 border border-[#E5E5E5]">
+                        <div className="text-[#E02424] text-xs font-bold tracking-widest pb-3 border-b border-[#E5E5E5]">
+                            エラー
+                        </div>
+                        <p className="text-sm font-normal tracking-widest py-2">{errorMsg}</p>
+                        <button 
+                            onClick={() => setErrorMsg(null)}
+                            className="premium-btn w-full py-3 bg-black text-white text-xs tracking-widest"
+                        >
+                            閉じる
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Bottom Actions Fixed */}
+            <div className="fixed bottom-[80px] left-0 right-0 max-w-md mx-auto p-5 z-40 bg-white/95 backdrop-blur border-t border-[#E5E5E5] shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
+                {step < 4 ? (
+                    <button 
+                        onClick={handleNext}
+                        disabled={
+                            (step === 1 && !selectedDate) || 
+                            (step === 3 && !selectedSlot)
+                        }
+                        className="premium-btn w-full py-4 text-sm tracking-widest disabled:opacity-30 disabled:border-[#E5E5E5]"
+                    >
+                        次へ進む
+                    </button>
+                ) : (
+                    <Link href="/" className="premium-btn py-4 flex items-center justify-center gap-3 w-full text-sm tracking-widest bg-black text-white hover:bg-white hover:text-black hover:border-black border transition-all">
+                        <Check size={18} className="stroke-[1.5]" />
+                        予約を確定する
+                    </Link>
+                )}
+            </div>
+        </div>
+    );
+}

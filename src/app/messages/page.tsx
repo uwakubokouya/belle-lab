@@ -1,0 +1,254 @@
+"use client";
+import { useEffect, useState } from 'react';
+import { useUser } from '@/providers/UserProvider';
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import { ArrowLeft, MessageCircle, Lock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface Conversation {
+  partnerId: string;
+  partnerName: string;
+  partnerAvatar: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  isUnread: boolean;
+}
+
+export default function MessagesIndexPage() {
+  const { user, isLoading: isUserLoading } = useUser();
+  const router = useRouter();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (isUserLoading) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchConversations = async () => {
+      setIsLoading(true);
+
+      // Fetch all messages where current user is sender or receiver
+      const { data: messages, error } = await supabase
+        .from('sns_messages')
+        .select(`
+          id,
+          sender_id,
+          receiver_id,
+          content,
+          created_at,
+          is_read
+        `)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error || !messages) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Group by partner
+      const map = new Map<string, any>();
+      const partnerIds = new Set<string>();
+
+      for (const msg of messages) {
+        const partnerId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
+        partnerIds.add(partnerId);
+
+        // We only want to set the map entry if we haven't found a REAL message yet.
+        const isSystemMsg = msg.content?.startsWith('[SYSTEM_LIKE]') || msg.content?.startsWith('[SYSTEM_ACCEPT]');
+        
+        if (!map.has(partnerId)) {
+           // Temporarily set it with pure system state in case there are no real messages
+           map.set(partnerId, {
+             partnerId,
+             lastMessage: "✨ マッチングしました！",
+             lastMessageAt: msg.created_at,
+             isUnread: msg.receiver_id === user.id && !msg.is_read && !isSystemMsg,
+             hasRealMessage: false
+           });
+        }
+        
+        // If this is a real message and we haven't locked in a real message yet
+        const currentEntry = map.get(partnerId);
+        if (!isSystemMsg && !currentEntry.hasRealMessage) {
+           currentEntry.lastMessage = msg.content || "画像を送信しました";
+           currentEntry.lastMessageAt = msg.created_at; // use the time of the real message? Or the latest? Keep latest time.
+           currentEntry.hasRealMessage = true;
+        }
+      }
+
+      if (partnerIds.size === 0) {
+        setConversations([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch partner profiles
+      const { data: profiles, error: profileErr } = await supabase
+        .from('sns_profiles')
+        .select('id, name, avatar_url')
+        .in('id', Array.from(partnerIds));
+
+      if (!profileErr && profiles) {
+        const profileMap = new Map(profiles.map(p => [p.id, p]));
+        
+        const finalConversations: Conversation[] = [];
+        for (const [pId, convo] of Array.from(map.entries())) {
+          if (!convo.hasRealMessage) continue;
+
+          const profile = profileMap.get(pId);
+          finalConversations.push({
+            ...convo,
+            partnerName: profile?.name || "名称未設定",
+            partnerAvatar: profile?.avatar_url || "/images/no-photo.jpg"
+          });
+        }
+        
+        // Sort by last message time
+        finalConversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+        setConversations(finalConversations);
+      }
+
+      setIsLoading(false);
+    };
+
+    fetchConversations();
+  }, [user, isUserLoading]);
+
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffMs = now.getTime() - past.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return `たった今`;
+    if (diffMins < 60) return `${diffMins}分前`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}時間前`;
+    return `${Math.floor(diffHours / 24)}日前`;
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F9F9F9] pb-24">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-[#E5E5E5] px-4 py-4 flex items-center">
+        <button onClick={() => router.back()} className="mr-4 lg:hidden">
+          <ArrowLeft size={20} className="stroke-[1.5]" />
+        </button>
+        <h1 className="text-sm font-bold tracking-widest uppercase flex items-center gap-2">
+           <MessageCircle size={18} />
+           メッセージ
+        </h1>
+      </header>
+
+      <div className="p-4">
+        {isUserLoading || isLoading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : !user ? (
+          <>
+            <div className="space-y-[1px] bg-[#E5E5E5] -mx-4 pointer-events-none select-none blur-[4px]">
+               {[1, 2, 3, 4, 5].map(i => (
+                 <div key={i} className="bg-white p-4 flex items-center gap-4 relative">
+                   <div className="w-12 h-12 bg-[#F9F9F9] border border-[#E5E5E5] rounded-full"></div>
+                   <div className="flex-1 w-full space-y-2">
+                     <div className="w-24 h-3 bg-[#E5E5E5]"></div>
+                     <div className="w-48 h-2 bg-[#E5E5E5]"></div>
+                   </div>
+                 </div>
+               ))}
+            </div>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+               <div className="absolute top-6 left-6 border border-white/50 bg-white/50 rounded-full z-10">
+                 <button 
+                   onClick={() => router.back()} 
+                   className="flex items-center justify-center w-10 h-10 text-black hover:bg-black hover:text-white transition-colors rounded-full shadow-sm"
+                 >
+                   <ArrowLeft size={16} className="stroke-[2]" />
+                 </button>
+               </div>
+               
+               <div className="bg-white w-full max-w-sm p-6 border border-[#E5E5E5] flex flex-col items-center">
+                 <div className="w-12 h-12 border border-black flex items-center justify-center mb-6 text-black">
+                   <Lock size={20} className="stroke-[1.5]" />
+                 </div>
+                 <h3 className="text-sm font-bold tracking-widest mb-2 uppercase">Members Only</h3>
+                 <p className="text-[10px] text-[#777777] mb-6 tracking-widest">これより先は会員登録が必要です</p>
+                 
+                 <div className="w-full bg-[#F9F9F9] border border-[#E5E5E5] p-5 mb-8 text-left space-y-4">
+                     <p className="text-[11px] font-bold tracking-widest border-b border-[#E5E5E5] pb-2 mb-4 text-black uppercase">無料会員登録のメリット</p>
+                     <div className="flex items-center gap-3 text-xs tracking-widest text-[#333333]">
+                        <span className="w-4 h-4 bg-black text-white flex items-center justify-center text-[8px] font-bold shrink-0">1</span>
+                        会員・フォロワー限定の<br/>写真・動画が見放題
+                     </div>
+                     <div className="flex items-center gap-3 text-xs tracking-widest text-[#333333]">
+                        <span className="w-4 h-4 bg-black text-white flex items-center justify-center text-[8px] font-bold shrink-0">2</span>
+                        お気に入りのキャストと<br/>メッセージでやり取り可能
+                     </div>
+                     <div className="flex items-center gap-3 text-xs tracking-widest text-[#333333]">
+                        <span className="w-4 h-4 bg-black text-white flex items-center justify-center text-[8px] font-bold shrink-0">3</span>
+                        予約管理や店舗からの<br/>特別なお知らせを受け取れる
+                     </div>
+                 </div>
+
+                 <div className="w-full space-y-3">
+                   <Link href="/register" className="premium-btn w-full py-4 text-xs tracking-widest flex items-center justify-center bg-black text-white">
+                     無料会員登録に進む
+                   </Link>
+                   <button onClick={() => router.back()} className="w-full py-4 flex items-center justify-center text-xs tracking-widest text-[#777777] border border-[#E5E5E5] bg-white hover:bg-[#F9F9F9] transition-colors">
+                     閉じる
+                   </button>
+                 </div>
+               </div>
+            </div>
+          </>
+        ) : conversations.length > 0 ? (
+          <div className="space-y-[1px] bg-[#E5E5E5] -mx-4">
+            {conversations.map((convo) => (
+              <Link key={convo.partnerId} href={`/messages/${convo.partnerId}`}>
+                <div className="bg-white p-4 flex items-center gap-4 hover:bg-[#FCFCFC] transition-colors relative">
+                  <div className="shrink-0 relative">
+                    <div className="w-12 h-12 bg-[#F9F9F9] border border-[#E5E5E5] overflow-hidden rounded-full">
+                      <img 
+                        src={convo.partnerAvatar} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {convo.isUnread && (
+                      <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#E02424] border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 pr-12">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`font-bold text-sm tracking-widest truncate ${convo.isUnread ? 'text-black' : 'text-[#333]'}`}>
+                        {convo.partnerName}
+                      </span>
+                    </div>
+                    <div className={`text-[11px] truncate tracking-widest ${convo.isUnread ? 'text-black font-medium' : 'text-[#777777]'}`}>
+                      {convo.lastMessage}
+                    </div>
+                  </div>
+                  
+                  <div className="absolute right-4 top-4 text-[10px] text-[#777777] tracking-widest">
+                    {getTimeAgo(convo.lastMessageAt)}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-32 text-[#777777]">
+            <MessageCircle size={48} className="stroke-[1] mb-4 opacity-50" />
+            <p className="text-xs tracking-widest">メッセージはありません</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
