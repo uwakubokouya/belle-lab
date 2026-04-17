@@ -554,8 +554,10 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
                             </div>
                         </div>
 
-                        <div className="bg-black p-5 text-[10px] text-white tracking-widest uppercase leading-relaxed font-light text-center">
-                            ご予約確定後、詳細をお送りいたします。キャンセルは開始1時間前まで可能です。
+                        <div className="bg-black p-5 text-[10px] text-white tracking-widest leading-relaxed font-light text-left space-y-3">
+                            <p>ご予約いただきありがとうございます。<br/>ご予約につきましては、店舗からの折り返しのご連絡をもちまして「確定」とさせていただきます。</p>
+                            <p>誠に恐縮ながら、ご予約は先着順にて承っております。<br/>ご連絡がつく前に他のお客様の予約が確定した場合は、そちらが優先となる場合がございます。<br/>何卒、ご了承いただけますようお願い申し上げます。</p>
+                            <p>確認ができ次第、速やかにご連絡差し上げますので今しばらくお待ちくださいませ。</p>
                         </div>
                     </div>
                 )}
