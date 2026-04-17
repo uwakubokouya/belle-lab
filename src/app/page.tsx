@@ -167,7 +167,7 @@ export default function Home() {
                    }
 
                    if (cursorM >= seM) {
-                       statusText = "受付終了";
+                            if (am >= seM) { statusText = "受付終了"; } else { statusText = "ご予約完売"; }
                        if (avail.next_shift_date) {
                            const dt = new Date(avail.next_shift_date);
                            nextAvailableTime = `次回出勤: ${dt.getMonth() + 1}/${dt.getDate()}`;

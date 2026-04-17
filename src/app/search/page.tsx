@@ -202,7 +202,7 @@ export default function SearchPage() {
                        }
 
                        if (cursorM >= seM) {
-                           statusText = "受付終了";
+                            if (am >= seM) { statusText = "受付終了"; } else { statusText = "ご予約完売"; }
                            const nextDateRaw = avail.next_shift_date || nextShiftMap.get(cast.id);
                            if (nextDateRaw) {
                                const dt = new Date(nextDateRaw);
@@ -304,6 +304,8 @@ export default function SearchPage() {
                     } 
                 } else if (c.statusText === '受付終了') {
                     score += 300000 + nextShiftScore;
+                } else if (c.statusText === 'ご予約完売') {
+                    score += 250000 + nextShiftScore;
                 } else if (c.statusText === 'お休み') {
                     score += 200000 + nextShiftScore;
                 } else {
@@ -536,6 +538,10 @@ export default function SearchPage() {
                             ) : cast.statusText === '受付終了' ? (
                                 <div className="bg-black/70 backdrop-blur text-[#E5E5E5] text-[9px] px-2 py-1 font-bold tracking-widest border border-white/20">
                                     受付終了
+                                </div>
+                            ) : cast.statusText === 'ご予約完売' ? (
+                                <div className="bg-[#E5E5E5]/90 backdrop-blur text-black text-[9px] px-2 py-1 font-bold tracking-widest border border-black/20">
+                                    ご予約完売
                                 </div>
                             ) : cast.statusText === '本日出勤中' ? (
                                 <div className="bg-white/90 backdrop-blur text-black text-[9px] px-2 py-1 font-bold tracking-widest flex items-center gap-1 shadow-sm border border-white whitespace-nowrap">

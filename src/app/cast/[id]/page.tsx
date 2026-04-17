@@ -369,14 +369,14 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                        
                        let cursorM = Math.max(am, ssM);
                        
-                       const parsedBookings = bookings.map((b: any) => {
+                       const parsedBookings = bookings.map((b) => {
                            let bsH = parseInt(b.start.split(':')[0]); if(bsH < 6) bsH += 24;
                            let beH = parseInt(b.end.split(':')[0]); if(beH < 6) beH += 24;
                            return {
                                startM: bsH * 60 + parseInt(b.start.split(':')[1] || '0'),
                                endM: beH * 60 + parseInt(b.end.split(':')[1] || '0')
                            };
-                       }).sort((a: any, b: any) => a.startM - b.startM);
+                       }).sort((a, b) => a.startM - b.startM);
 
                        let bumped = true;
                        while (bumped) {
