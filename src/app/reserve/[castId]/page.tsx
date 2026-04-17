@@ -50,6 +50,7 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
     
     // Dynamic Slots calculation
     const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -670,6 +671,43 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
                 </div>
             )}
 
+            {showConfirmModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white p-6 shadow-xl max-w-sm w-full text-center space-y-6 border border-[#E5E5E5]">
+                        <div className="text-black text-sm font-bold tracking-widest pb-3 border-b border-[#E5E5E5]">
+                            最終確認
+                        </div>
+                        <p className="text-sm tracking-widest leading-loose py-2">
+                            この内容で予約リクエストを送信します。<br/>
+                            よろしいですか？
+                        </p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setShowConfirmModal(false)}
+                                disabled={isSubmitting}
+                                className="premium-btn flex-1 py-3 bg-white text-black border border-[#E5E5E5] text-xs tracking-widest disabled:opacity-50"
+                            >
+                                キャンセル
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setShowConfirmModal(false);
+                                    handleSubmit();
+                                }}
+                                disabled={isSubmitting}
+                                className="premium-btn flex-1 py-3 bg-black text-white border border-black text-xs tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isSubmitting ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    '送信する'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Bottom Actions Fixed */}
             <div className="fixed bottom-[80px] left-0 right-0 max-w-md mx-auto p-5 z-40 bg-white/95 backdrop-blur border-t border-[#E5E5E5] shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
                 {step < 4 ? (
@@ -685,14 +723,10 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
                     </button>
                 ) : (
                     <button 
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        className="premium-btn py-4 flex items-center justify-center gap-3 w-full text-sm tracking-widest bg-black text-white hover:bg-white hover:text-black hover:border-black border transition-all disabled:opacity-50">
-                        {isSubmitting ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                            <><Check size={18} className="stroke-[1.5]" />予約を確定する</>
-                        )}
+                        onClick={() => setShowConfirmModal(true)}
+                        className="premium-btn py-4 flex items-center justify-center gap-3 w-full text-sm tracking-widest bg-black text-white hover:bg-white hover:text-black hover:border-black border transition-all">
+                        <Check size={18} className="stroke-[1.5]" />
+                        予約を確定する
                     </button>
                 )}
             </div>
