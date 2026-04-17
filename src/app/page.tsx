@@ -29,6 +29,8 @@ export default function Home() {
       const lastTracked = sessionStorage.getItem(TRACK_KEY);
       const now = Date.now();
       
+      if (user?.role === 'cast' || user?.is_admin) return;
+      
       // Track once per hour per session (3600000ms)
       if (!lastTracked || now - parseInt(lastTracked) > 3600000) {
           sessionStorage.setItem(TRACK_KEY, now.toString());

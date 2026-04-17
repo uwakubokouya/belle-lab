@@ -34,8 +34,9 @@ export default function AnalyticsAdminPage() {
         const fetchCasts = async () => {
             const { data } = await supabase.from('sns_profiles').select('id, name');
             if (data) {
-                setCasts(data);
-                // Also get actual casts table to merge real cast status if needed, but sns_profiles is enough for name mapping
+                const { data: castsData } = await supabase.from('casts').select('id');
+                const castIds = new Set(castsData?.map(c => c.id) || []);
+                setCasts(data.filter(c => castIds.has(c.id)));
             }
         };
         fetchCasts();
@@ -151,7 +152,7 @@ export default function AnalyticsAdminPage() {
                         onClick={() => setActiveTab('home')}
                         className={`flex-1 py-3 text-xs tracking-widest uppercase transition-colors ${activeTab === 'home' ? 'bg-black text-white font-medium' : 'bg-white text-black hover:bg-[#F9F9F9]'}`}
                     >
-                        ホーム画面
+                        店舗アクセス
                     </button>
                     <button 
                         onClick={() => setActiveTab('cast')}
@@ -217,11 +218,9 @@ export default function AnalyticsAdminPage() {
                                 <span className="text-4xl font-light tracking-wider">{totalViews.toLocaleString()}</span>
                                 <span className="text-xs mb-1 tracking-widest text-[#CCCCCC]">PV</span>
                             </div>
-                            {activeTab === 'cast' && (
                             <div className="flex items-center gap-2 text-[#AAAAAA] text-[10px] tracking-widest border-t border-white/20 pt-4 w-full justify-center">
                                 予約クリック合計: <span className="text-white font-bold text-xs">{totalReserves.toLocaleString()}</span> 回
                             </div>
-                            )}
                         </div>
 
                         {/* Cast Ranking - show only if Cast tab and 'all' is selected */}
@@ -289,14 +288,12 @@ export default function AnalyticsAdminPage() {
                                                     </span>
                                                     <span className="text-[10px] text-[#777777] mb-[2px]">PV</span>
                                                 </div>
-                                                {activeTab === 'cast' && (
                                                 <div className="flex items-end gap-1 w-20 justify-end border-l border-[#E5E5E5] pl-3">
                                                     <span className="text-base tracking-wider text-[#777777]">
                                                         {dailyReserveCounts[i].toLocaleString()}
                                                     </span>
                                                     <span className="text-[10px] text-[#AAAAAA] mb-[2px]">予約</span>
                                                 </div>
-                                                )}
                                             </div>
                                         </div>
                                     )})}
