@@ -46,6 +46,7 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
     const [selectedOptions, setSelectedOptions] = useState<any[]>([]);
     const [selectedDiscount, setSelectedDiscount] = useState<any | null>(null);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+    const [customerNotes, setCustomerNotes] = useState("");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     // Dynamic Slots calculation
@@ -552,6 +553,19 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
                                     })()}
                                 </span>
                             </div>
+                        </div>
+
+                        <div className="space-y-3 pt-4">
+                            <label className="text-sm font-normal tracking-widest flex items-center gap-2">
+                                希望連絡時間やその他備考
+                            </label>
+                            <textarea 
+                                className="w-full border border-[#E5E5E5] bg-[#F9F9F9] p-4 text-xs tracking-widest leading-relaxed focus:outline-none focus:border-black transition-colors resize-none"
+                                rows={4}
+                                placeholder="ご希望の連絡時間帯や、お店へのご要望などをご自由にお書きください。"
+                                value={customerNotes}
+                                onChange={(e) => setCustomerNotes(e.target.value)}
+                            ></textarea>
                         </div>
 
                         <div className="bg-black p-5 text-[10px] text-white tracking-widest leading-relaxed font-light text-left space-y-3">
