@@ -376,7 +376,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                startM: bsH * 60 + parseInt(b.start.split(':')[1] || '0'),
                                endM: beH * 60 + parseInt(b.end.split(':')[1] || '0')
                            };
-                       }).sort((a, b) => a.startM - b.startM);
+                       }).sort((a: any, b: any) => a.startM - b.startM);
 
                        let bumped = true;
                        while (bumped) {

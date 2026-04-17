@@ -263,7 +263,7 @@ export default function SearchPage() {
             });
 
         // 並び順： 新人 > 待機中 > 次回早い順 > 受付終了 > お休み > 次回出勤日の近い順 > シフト未定
-        mergedCasts.sort((a, b) => {
+        mergedCasts.sort((a: any, b: any) => {
             const getScore = (c: any) => {
                 let score = 0;
                 
