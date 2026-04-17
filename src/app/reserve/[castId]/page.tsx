@@ -430,7 +430,7 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
                                                                 {course.duration ? <span className={`text-[10px] tracking-widest ${isSelected ? 'text-white/70' : 'text-[#777777]'}`}>{course.duration}分</span> : null}
                                                             </div>
                                                             <div className="font-normal text-lg tracking-wider">
-                                                                {course.price > 0 ? `¥${course.price.toLocaleString()}` : course.price < 0 ? `-¥${Math.abs(course.price).toLocaleString()}` : '無料'}
+                                                                {course.price > 0 ? (type === 'DISCOUNT' ? `-¥${course.price.toLocaleString()}` : `¥${course.price.toLocaleString()}`) : course.price < 0 ? `-¥${Math.abs(course.price).toLocaleString()}` : '無料'}
                                                             </div>
                                                         </button>
                                                     );
@@ -536,7 +536,7 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
                                 <div className="flex flex-col pb-4 border-b border-[#E5E5E5] pt-4">
                                     <span className="text-[#e23c3c] text-[10px] tracking-widest mb-1">割引</span>
                                     <span className="font-normal text-base tracking-widest text-[#e23c3c]">{selectedDiscount.label || selectedDiscount.name}</span>
-                                    <span className="mt-1 text-sm tracking-wide text-[#e23c3c]">{selectedDiscount.price < 0 ? `-¥${Math.abs(selectedDiscount.price).toLocaleString()}` : '無料'}</span>
+                                    <span className="mt-1 text-sm tracking-wide text-[#e23c3c]">{selectedDiscount.price !== 0 ? `-¥${Math.abs(selectedDiscount.price).toLocaleString()}` : '無料'}</span>
                                 </div>
                             )}
                             <div className="flex flex-col pb-2 pt-4">
@@ -546,7 +546,7 @@ export default function ReservationPage({ params }: { params: Promise<{ castId: 
                                         const cPrice = selectedCourseItem?.price || 0;
                                         const nPrice = selectedNomination?.price || 0;
                                         const oPrice = selectedOptions.reduce((sum, o) => sum + (o.price || 0), 0);
-                                        const dPrice = selectedDiscount?.price || 0;
+                                        const dPrice = selectedDiscount?.price ? Math.abs(selectedDiscount.price) * -1 : 0;
                                         const total = cPrice + nPrice + oPrice + dPrice;
                                         return `¥${Math.max(0, total).toLocaleString()}`;
                                     })()}
