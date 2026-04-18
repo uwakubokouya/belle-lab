@@ -284,6 +284,10 @@ export default function Home() {
         return posts.filter(p => p.isWorkingToday);
     }
 
+    if (activeTab === 'recommended') {
+        return posts.filter(p => !p.sns_profiles?.is_admin);
+    }
+
     return posts;
   };
 
