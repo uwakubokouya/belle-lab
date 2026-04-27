@@ -1,6 +1,7 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { BarChart3, Bell, ShieldAlert, Settings, X, CheckCircle2 } from "lucide-react";
+import { BarChart3, Bell, ShieldAlert, Settings, X, Search, Trash2, Clock, Users, Database } from "lucide-react";
 import Link from "next/link";
 
 interface AdminHomeContentProps {
@@ -9,18 +10,39 @@ interface AdminHomeContentProps {
 
 export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
   const [summaryData, setSummaryData] = useState({ todayPv: 0, todayUsers: 0, unreadFeedbacks: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Users Tab State
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [customerPage, setCustomerPage] = useState(1);
+  const [hasMoreCustomers, setHasMoreCustomers] = useState(true);
+
+  // Monitoring Tab State
+  const [posts, setPosts] = useState<any[]>([]);
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [fullscreenMedia, setFullscreenMedia] = useState<string | null>(null);
+
+  // Settings Tab State
+  const [stores, setStores] = useState<any[]>([]);
 
   useEffect(() => {
     if (activeTab === 'summary') fetchSummary();
-    if (activeTab === 'users') fetchCustomers();
+    if (activeTab === 'users') {
+      setCustomerPage(1);
+      fetchCustomers(1, searchQuery, false);
+    }
+    if (activeTab === 'moderation') fetchMonitoringData();
+    if (activeTab === 'settings') fetchStores();
   }, [activeTab]);
 
+  // ==========================================
+  // SUMMARY
+  // ==========================================
   const fetchSummary = async () => {
     setIsLoading(true);
     const today = new Date();
@@ -51,16 +73,49 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
     setIsLoading(false);
   };
 
-  const fetchCustomers = async () => {
+  // ==========================================
+  // USERS (CUSTOMER MANAGEMENT)
+  // ==========================================
+  const fetchCustomers = async (page = 1, query = "", append = false) => {
     setIsLoading(true);
-    const { data } = await supabase
+    const pageSize = 20;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let q = supabase
       .from('sns_profiles')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('role', 'customer')
       .order('created_at', { ascending: false })
-      .limit(50);
-    if (data) setCustomers(data);
+      .range(from, to);
+
+    if (query) {
+       q = q.or(`name.ilike.%${query}%,phone.ilike.%${query}%`);
+    }
+
+    const { data, count } = await q;
+    
+    if (data) {
+      if (append) {
+        setCustomers(prev => [...prev, ...data]);
+      } else {
+        setCustomers(data);
+      }
+      setHasMoreCustomers(count ? from + data.length < count : false);
+    }
     setIsLoading(false);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomerPage(1);
+    fetchCustomers(1, searchQuery, false);
+  };
+
+  const handleLoadMore = () => {
+    const nextPage = customerPage + 1;
+    setCustomerPage(nextPage);
+    fetchCustomers(nextPage, searchQuery, true);
   };
 
   const handleUserClick = (u: any) => {
@@ -83,6 +138,36 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
     setIsResetting(false);
   };
 
+  const sendWarning = async () => {
+    if (!selectedUser?.id) return;
+    if (!confirm(`${selectedUser.name || 'このユーザー'}に警告メッセージを送信しますか？`)) return;
+    
+    setIsResetting(true); // Re-using resetting state for loading
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    
+    if (!currentUser) {
+       setStatusMessage("エラー: 管理者情報を取得できませんでした。");
+       setIsResetting(false);
+       return;
+    }
+
+    const warningMessage = `【システム警告】\nあなたのアカウントに対して複数回の通報が確認されました。\n利用規約に違反する行為が継続した場合、アカウントを停止する可能性がありますのでご注意ください。`;
+    
+    const { error } = await supabase.from('sns_messages').insert({
+       sender_id: currentUser.id,
+       receiver_id: selectedUser.id,
+       content: warningMessage,
+       is_read: false
+    });
+
+    if (error) {
+       setStatusMessage("エラー: 警告メッセージの送信に失敗しました。");
+    } else {
+       setStatusMessage("警告メッセージを送信しました。");
+    }
+    setIsResetting(false);
+  };
+
   const toggleBan = async () => {
     if (!selectedUser?.id) return;
     const newStatus = selectedUser.status === 'banned' ? 'active' : 'banned';
@@ -97,7 +182,94 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
     }
   };
 
-  if (isLoading) {
+  // ==========================================
+  // MONITORING
+  // ==========================================
+  const fetchMonitoringData = async () => {
+    setIsLoading(true);
+    
+    const { data: postsData } = await supabase
+      .from('sns_posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (postsData && postsData.length > 0) {
+       const castIds = [...new Set(postsData.map(p => p.cast_id))];
+       const { data: profilesData } = await supabase
+         .from('sns_profiles')
+         .select('id, name, avatar_url')
+         .in('id', castIds);
+       
+       const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+       const enrichedPosts = postsData.map(p => ({
+         ...p,
+         author: profileMap.get(p.cast_id) || { name: 'Unknown', avatar_url: null }
+       }));
+       setPosts(enrichedPosts);
+    } else {
+       setPosts([]);
+    }
+
+    const { data: usersData } = await supabase
+      .from('sns_profiles')
+      .select('id, name, created_at, avatar_url')
+      .eq('role', 'customer')
+      .order('created_at', { ascending: false })
+      .limit(10);
+      
+    if (usersData) setRecentUsers(usersData);
+
+    setIsLoading(false);
+  };
+
+  const deletePost = async (postId: string) => {
+    if (!confirm('この投稿を削除してよろしいですか？')) return;
+    const { error } = await supabase.from('sns_posts').delete().eq('id', postId);
+    if (!error) {
+       setPosts(posts.filter(p => p.id !== postId));
+       alert('投稿を削除しました。');
+    } else {
+       alert('エラーが発生しました: ' + error.message);
+    }
+  };
+
+  // ==========================================
+  // SETTINGS (STORES)
+  // ==========================================
+  const fetchStores = async () => {
+    setIsLoading(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'admin')
+      .order('created_at', { ascending: true });
+    
+    if (data) setStores(data);
+    setIsLoading(false);
+  };
+
+  const toggleStoreFeature = async (storeId: string, featureKey: string, currentValue: boolean) => {
+    const newValue = !currentValue;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [featureKey]: newValue })
+      .eq('id', storeId);
+      
+    if (!error) {
+       setStores(stores.map(s => s.id === storeId ? { ...s, [featureKey]: newValue } : s));
+    } else {
+       alert('設定の更新に失敗しました。');
+    }
+  };
+
+  const formatDate = (isoString: string) => {
+    if (!isoString) return '不明';
+    const d = new Date(isoString);
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  if (isLoading && activeTab === 'summary') {
     return (
       <div className="py-20 flex justify-center">
         <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
@@ -151,6 +323,20 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
       {activeTab === 'users' && (
         <div className="space-y-4 animate-in fade-in duration-300 px-4 py-6">
           <h2 className="text-sm tracking-widest font-bold mb-4 uppercase">Customer Management</h2>
+          
+          <form onSubmit={handleSearch} className="flex gap-2 mb-6">
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="名前または電話番号で検索" 
+              className="flex-1 border border-[#E5E5E5] px-3 py-2 text-xs focus:outline-none focus:border-black"
+            />
+            <button type="submit" className="bg-black text-white px-4 py-2 flex items-center justify-center">
+              <Search size={16} />
+            </button>
+          </form>
+
           <div className="space-y-2">
             {customers.map(c => (
               <div key={c.id} onClick={() => handleUserClick(c)} className="bg-white border border-[#E5E5E5] p-4 flex items-center justify-between cursor-pointer hover:border-black transition-colors">
@@ -161,9 +347,7 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
                     className="w-10 h-10 rounded-full border border-[#E5E5E5] object-cover" 
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      if (!target.src.includes('no-photo.jpg')) {
-                        target.src = '/images/no-photo.jpg';
-                      }
+                      if (!target.src.includes('no-photo.jpg')) target.src = '/images/no-photo.jpg';
                     }}
                   />
                   <div>
@@ -171,29 +355,155 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
                       {c.name || '名無し'}
                       {c.status === 'banned' && <span className="bg-[#E02424] text-white text-[8px] px-1 py-0.5 rounded-sm">BAN</span>}
                     </p>
-                    <p className="text-[10px] text-[#777] mt-1">{c.phone || '電話番号未登録'}</p>
+                    <p className="text-[10px] text-[#777] mt-1 flex items-center gap-2">
+                      {c.phone || '電話番号未登録'}
+                      {c.report_count > 0 && <span className="text-[#E02424] font-bold tracking-widest bg-[#FFF0F5] px-1 py-0.5">通報: {c.report_count}回</span>}
+                    </p>
                   </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] text-[#999]">登録日</p>
+                  <p className="text-[10px]">{formatDate(c.created_at).split(' ')[0]}</p>
                 </div>
               </div>
             ))}
-            {customers.length === 0 && <p className="text-xs text-[#777] text-center py-10">顧客データがありません</p>}
+            
+            {customers.length === 0 && !isLoading && (
+              <p className="text-xs text-[#777] text-center py-10">顧客データが見つかりません</p>
+            )}
+            
+            {hasMoreCustomers && (
+              <button onClick={handleLoadMore} className="w-full py-4 mt-4 border border-black text-xs font-bold tracking-widest uppercase hover:bg-black hover:text-white transition-colors">
+                {isLoading ? 'Loading...' : 'Load More'}
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* --- MODERATION TAB --- */}
       {activeTab === 'moderation' && (
-        <div className="space-y-4 animate-in fade-in duration-300 text-center py-20 px-4">
-          <ShieldAlert size={32} className="stroke-[1] mx-auto text-[#CCC] mb-4" />
-          <p className="text-xs tracking-widest text-[#777]">コンテンツ監視機能は準備中です</p>
+        <div className="space-y-6 animate-in fade-in duration-300 px-4 py-6">
+          <h2 className="text-sm tracking-widest font-bold mb-4 uppercase">Platform Monitoring</h2>
+
+          {/* Activity Log */}
+          <div>
+             <h3 className="text-xs font-bold tracking-widest bg-[#F9F9F9] py-2 px-3 border border-[#E5E5E5] mb-3 flex items-center gap-2">
+               <Clock size={14} /> 最近の新規登録
+             </h3>
+             <div className="space-y-2">
+                {recentUsers.map(user => (
+                   <div key={user.id} className="text-[10px] flex justify-between border-b border-[#E5E5E5] pb-2">
+                      <span className="font-bold">{user.name || '名無し'}</span>
+                      <span className="text-[#777]">{formatDate(user.created_at)}</span>
+                   </div>
+                ))}
+             </div>
+          </div>
+
+          {/* Global Posts */}
+          <div className="mt-8">
+             <h3 className="text-xs font-bold tracking-widest bg-[#F9F9F9] py-2 px-3 border border-[#E5E5E5] mb-3 flex items-center gap-2">
+               <ShieldAlert size={14} /> グローバル投稿タイムライン
+             </h3>
+             <div className="space-y-4">
+                {posts.map(post => (
+                  <div key={post.id} className="border border-[#E5E5E5] bg-white p-4 relative group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <img src={post.author.avatar_url || '/images/no-photo.jpg'} className="w-8 h-8 rounded-full border border-[#E5E5E5] object-cover" />
+                      <div>
+                        <p className="text-xs font-bold">{post.author.name}</p>
+                        <p className="text-[9px] text-[#777]">{formatDate(post.created_at)}</p>
+                      </div>
+                    </div>
+                    {post.images && post.images.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        {post.images.map((url: string, i: number) => {
+                           if (url.toLowerCase().endsWith('.mp4') || url.toLowerCase().endsWith('.mov')) {
+                              return <video key={i} src={url} className="w-full h-32 object-cover border border-[#E5E5E5] cursor-pointer" onClick={() => setFullscreenMedia(url)} />;
+                           }
+                           return <img key={i} src={url} alt="post" className="w-full h-32 object-cover border border-[#E5E5E5] cursor-pointer" onClick={() => setFullscreenMedia(url)} />;
+                        })}
+                      </div>
+                    )}
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                    
+                    <button 
+                      onClick={() => deletePost(post.id)}
+                      className="absolute top-4 right-4 p-2 bg-[#F9F9F9] text-[#E02424] opacity-50 hover:opacity-100 hover:bg-[#E02424] hover:text-white transition-all border border-transparent hover:border-[#E02424]"
+                      title="投稿を削除"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {posts.length === 0 && <p className="text-xs text-[#777] text-center">最近の投稿はありません</p>}
+             </div>
+          </div>
         </div>
       )}
 
       {/* --- SETTINGS TAB --- */}
       {activeTab === 'settings' && (
-        <div className="space-y-4 animate-in fade-in duration-300 text-center py-20 px-4">
-          <Settings size={32} className="stroke-[1] mx-auto text-[#CCC] mb-4" />
-          <p className="text-xs tracking-widest text-[#777]">システムマスター設定は準備中です</p>
+        <div className="space-y-4 animate-in fade-in duration-300 px-4 py-6">
+          <h2 className="text-sm tracking-widest font-bold mb-4 uppercase">Store Settings</h2>
+          <p className="text-xs text-[#777] mb-6">各店舗が利用できる機能を個別に制御します。</p>
+          
+          <div className="space-y-4">
+            {stores.map(store => (
+               <div key={store.id} className="border border-[#E5E5E5] bg-white p-5">
+                 <div className="flex items-center gap-2 mb-4">
+                    <Database size={16} />
+                    <h3 className="font-bold text-sm tracking-widest">{store.full_name || store.username}</h3>
+                 </div>
+                 
+                 <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#F5F5F5] pb-2">
+                       <span className="text-[11px] font-bold text-[#555]">SNS連携・フィード機能</span>
+                       <button 
+                         onClick={() => toggleStoreFeature(store.id, 'sns_enabled', store.sns_enabled)}
+                         className={`w-12 h-6 rounded-full relative transition-colors ${store.sns_enabled ? 'bg-black' : 'bg-[#E5E5E5]'}`}
+                       >
+                         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${store.sns_enabled ? 'left-7' : 'left-1'}`}></div>
+                       </button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between border-b border-[#F5F5F5] pb-2">
+                       <span className="text-[11px] font-bold text-[#555]">キャスト分析・AI戦略機能</span>
+                       <button 
+                         onClick={() => toggleStoreFeature(store.id, 'ai_strategy_enabled', store.ai_strategy_enabled)}
+                         className={`w-12 h-6 rounded-full relative transition-colors ${store.ai_strategy_enabled ? 'bg-black' : 'bg-[#E5E5E5]'}`}
+                       >
+                         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${store.ai_strategy_enabled ? 'left-7' : 'left-1'}`}></div>
+                       </button>
+                    </div>
+
+                    <div className="flex items-center justify-between border-b border-[#F5F5F5] pb-2">
+                       <span className="text-[11px] font-bold text-[#555]">CTI (着信ポップアップ) 機能</span>
+                       <button 
+                         onClick={() => toggleStoreFeature(store.id, 'cti_enabled', store.cti_enabled)}
+                         className={`w-12 h-6 rounded-full relative transition-colors ${store.cti_enabled ? 'bg-black' : 'bg-[#E5E5E5]'}`}
+                       >
+                         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${store.cti_enabled ? 'left-7' : 'left-1'}`}></div>
+                       </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                       <span className="text-[11px] font-bold text-[#555]">キャスト専用ポータル</span>
+                       <button 
+                         onClick={() => toggleStoreFeature(store.id, 'cast_portal_enabled', store.cast_portal_enabled)}
+                         className={`w-12 h-6 rounded-full relative transition-colors ${store.cast_portal_enabled ? 'bg-black' : 'bg-[#E5E5E5]'}`}
+                       >
+                         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${store.cast_portal_enabled ? 'left-7' : 'left-1'}`}></div>
+                       </button>
+                    </div>
+                 </div>
+               </div>
+            ))}
+            {stores.length === 0 && !isLoading && (
+              <p className="text-xs text-[#777] text-center py-10">店舗が見つかりません</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -214,14 +524,16 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
                   className="w-16 h-16 rounded-full object-cover border border-[#E5E5E5]" 
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (!target.src.includes('no-photo.jpg')) {
-                      target.src = '/images/no-photo.jpg';
-                    }
+                    if (!target.src.includes('no-photo.jpg')) target.src = '/images/no-photo.jpg';
                   }}
                 />
                 <div className="text-center">
-                  <p className="text-sm font-bold tracking-widest">{selectedUser.name}</p>
-                  <p className="text-[10px] text-[#777] mt-1">{selectedUser.phone}</p>
+                  <p className="text-sm font-bold tracking-widest">{selectedUser.name || '名無し'}</p>
+                  <p className="text-[10px] text-[#777] mt-1">{selectedUser.phone || '電話番号未登録'}</p>
+                  <p className="text-[10px] text-[#999] mt-2">登録日時: {formatDate(selectedUser.created_at)}</p>
+                  <p className={`text-[10px] mt-1 font-bold ${selectedUser.report_count > 0 ? 'text-[#E02424]' : 'text-[#555]'}`}>
+                     通報回数: {selectedUser.report_count || 0}回
+                  </p>
                 </div>
               </div>
 
@@ -232,6 +544,14 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
               )}
 
               <div className="space-y-3">
+                <button
+                  onClick={sendWarning}
+                  disabled={isResetting}
+                  className="w-full py-3 bg-[#FFF0F5] border border-[#FFC0CB] text-[#E02424] text-[10px] font-bold tracking-widest hover:bg-[#E02424] hover:text-white transition-colors"
+                >
+                  {isResetting ? '処理中...' : '警告メッセージを送信する'}
+                </button>
+
                 <button
                   onClick={executeResetPassword}
                   disabled={isResetting}
@@ -254,6 +574,38 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Fullscreen Media Modal */}
+      {fullscreenMedia && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setFullscreenMedia(null)}
+        >
+          <button 
+            className="absolute top-4 right-4 text-white hover:text-[#CCC] transition-colors p-2"
+            onClick={(e) => { e.stopPropagation(); setFullscreenMedia(null); }}
+          >
+            <X size={24} />
+          </button>
+          
+          {fullscreenMedia.toLowerCase().endsWith('.mp4') || fullscreenMedia.toLowerCase().endsWith('.mov') ? (
+            <video 
+              src={fullscreenMedia} 
+              controls 
+              autoPlay
+              className="max-w-full max-h-[85vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <img 
+              src={fullscreenMedia} 
+              alt="Fullscreen Media" 
+              className="max-w-full max-h-[85vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
       )}
     </div>
