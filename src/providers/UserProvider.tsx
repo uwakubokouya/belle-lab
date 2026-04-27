@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-export type UserRole = 'customer' | 'cast';
+export type UserRole = 'customer' | 'cast' | 'store' | 'system';
 
 export interface UserSettings {
   notifications_enabled: boolean;
@@ -35,6 +35,8 @@ interface UserContextType {
   hasUnreadLikes: boolean;
   hasUnreadMessages: boolean;
   hasUnreadFeedbacks: boolean;
+  hasUnreadFootprints: boolean;
+  checkUnreadFootprints: () => Promise<void>;
   markNotificationsAsRead: () => void;
   markLikesAsRead: () => Promise<void>;
   refreshUnreadFeedbacks: () => Promise<void>;
@@ -50,19 +52,49 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [hasUnreadLikes, setHasUnreadLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [hasUnreadFeedbacks, setHasUnreadFeedbacks] = useState(false);
+  const [hasUnreadFootprints, setHasUnreadFootprints] = useState(false);
   const router = useRouter();
+
+    const checkUnreadFootprints = async (userId: string) => {
+       const { data: footprints } = await supabase
+          .from('sns_footprints')
+          .select('viewer_id')
+          .eq('cast_id', userId);
+
+       if (footprints && footprints.length > 0) {
+           const viewerIds = [...new Set(footprints.map(f => f.viewer_id))];
+           
+           const { data: likes } = await supabase
+              .from('sns_messages')
+              .select('receiver_id')
+              .eq('sender_id', userId)
+              .like('content', '[SYSTEM_LIKE]%')
+              .in('receiver_id', viewerIds);
+              
+           const likedIds = new Set(likes?.map(l => l.receiver_id) || []);
+           const hasUnliked = viewerIds.some(vid => !likedIds.has(vid));
+           setHasUnreadFootprints(hasUnliked);
+       } else {
+           setHasUnreadFootprints(false);
+       }
+    };
 
   useEffect(() => {
     setIsMounted(true);
 
     const loadUser = async () => {
+      console.log("[UserProvider] loadUser started");
       try {
+        console.log("[UserProvider] calling getSession");
         const { data: { session }, error } = await supabase.auth.getSession();
+        console.log("[UserProvider] getSession returned", !!session, error);
         if (error) throw error;
         
         if (session) {
-          await fetchProfile(session.user.id);
+          console.log("[UserProvider] calling fetchProfile for", session.user.id);
+          await fetchProfile(session.user.id, session.access_token);
         } else {
+          console.log("[UserProvider] no session, setting isLoading false");
           setIsLoading(false);
         }
       } catch (err: any) {
@@ -80,7 +112,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          await fetchProfile(session.user.id);
+          await fetchProfile(session.user.id, session.access_token);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
@@ -142,13 +174,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     // Load unread initially
     supabase.auth.getSession().then(({ data: { session } }) => {
-       if (session?.user.id) checkUnreadMessages(session.user.id);
+       if (session?.user.id) {
+           checkUnreadMessages(session.user.id);
+           checkUnreadFootprints(session.user.id);
+       }
     });
+
+
+
+    const footprintChannel = supabase.channel('public:sns_footprints')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sns_footprints' }, () => {
+         supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user.id) checkUnreadFootprints(session.user.id);
+         });
+      })
+      .subscribe();
 
     return () => {
       authListener.subscription.unsubscribe();
       supabase.removeChannel(notificationChannel);
       supabase.removeChannel(messageChannel);
+      supabase.removeChannel(footprintChannel);
     };
   }, []);
 
@@ -181,26 +227,50 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user?.is_admin]);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, tokenToUse?: string) => {
+    console.log("[UserProvider] fetchProfile started for", userId);
     try {
-      const { data, error } = await supabase
-        .from('sns_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      console.log("[UserProvider] fetching sns_profiles (using limit instead of single)");
+      
+      // Promise race to force a timeout if Supabase/Next.js fetch hangs
+      let timeoutHandle;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error('Supabase request timed out after 5 seconds')), 5000);
+      });
+
+      // @supabase/supabase-js のブラウザフェッチがハングするバグを回避するため、
+      // ネイティブの fetch で直接 PostgREST を叩く
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      // getSession()を再度呼ぶとSupabaseのバグでデッドロックするため引数のtokenを使う
+      const token = tokenToUse || supabaseAnonKey;
+
+      const fetchPromise = fetch(`${supabaseUrl}/rest/v1/sns_profiles?id=eq.${userId}&select=*`, {
+        headers: {
+          'apikey': supabaseAnonKey as string,
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-store'
+        }
+      }).then(async (res) => {
+        if (!res.ok) throw new Error("HTTP error " + res.status);
+        const json = await res.json();
+        return { data: json.length > 0 ? json[0] : null, error: null };
+      }).catch(err => {
+        return { data: null, error: err };
+      });
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      clearTimeout(timeoutHandle); // timeoutを解除してUncaught Errorを防ぐ
+      console.log("[UserProvider] sns_profiles returned (native fetch)", !!data, error);
 
       if (data && !error) {
         let finalAvatarUrl = data.avatar_url;
 
         // キャストでアイコン未設定の場合はマスターデータからフォールバック
         if (!finalAvatarUrl && data.role === 'cast') {
-          const { data: storeCast } = await supabase.from('casts').select('profile_image_url, avatar_url').eq('id', userId).maybeSingle();
-          if (storeCast) {
-            finalAvatarUrl = storeCast.profile_image_url || storeCast.avatar_url;
-          }
-          if (!finalAvatarUrl) {
-            finalAvatarUrl = "/images/no-photo.jpg";
-          }
+          // castsテーブルに画像URLカラムは存在しないため削除
+          finalAvatarUrl = "/images/no-photo.jpg";
         }
 
         setUser({
@@ -230,6 +300,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.error("Fetch profile exception:", err);
       setUser(null);
     } finally {
+      console.log("[UserProvider] fetchProfile finally block, setting isLoading false");
       setIsLoading(false);
     }
   };
@@ -237,7 +308,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      await fetchProfile(session.user.id);
+      await fetchProfile(session.user.id, session.access_token);
     }
   };
 
@@ -282,7 +353,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider value={{ 
-      user, logout, isMounted, isLoading, refreshProfile, hasUnreadNotifications, hasUnreadLikes, hasUnreadMessages, hasUnreadFeedbacks, markNotificationsAsRead, markLikesAsRead, refreshUnreadFeedbacks 
+      user, logout, isMounted, isLoading, refreshProfile, hasUnreadNotifications, hasUnreadLikes, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints, checkUnreadFootprints: async () => { if (user?.id) await checkUnreadFootprints(user.id); }, markNotificationsAsRead, markLikesAsRead, refreshUnreadFeedbacks 
     }}>
       {children}
     </UserContext.Provider>
