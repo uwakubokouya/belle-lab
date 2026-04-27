@@ -8,27 +8,29 @@ export default function SecurityGuard({ children }: { children: React.ReactNode 
   const [guestId, setGuestId] = useState("");
 
   useEffect(() => {
-    setGuestId("GUEST-" + Math.random().toString(36).substring(2, 10).toUpperCase());
-    const handleBlur = () => setIsBlurred(true);
-    const handleFocus = () => setIsBlurred(false);
-    const handleVisibilityChange = () => {
-      if (document.hidden) setIsBlurred(true);
-      else setIsBlurred(false);
-    };
+    // setGuestId("GUEST-" + Math.random().toString(36).substring(2, 10).toUpperCase());
+    
+    // Privacy blur feature temporarily disabled per user request
+    // const handleBlur = () => setIsBlurred(true);
+    // const handleFocus = () => setIsBlurred(false);
+    // const handleVisibilityChange = () => {
+    //   if (document.hidden) setIsBlurred(true);
+    //   else setIsBlurred(false);
+    // };
 
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // window.addEventListener('blur', handleBlur);
+    // window.addEventListener('focus', handleFocus);
+    // document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Initial check
-    if (document.hidden || !document.hasFocus()) {
-       setIsBlurred(true);
-    }
+    // if (document.hidden || !document.hasFocus()) {
+    //    setIsBlurred(true);
+    // }
 
     return () => {
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // window.removeEventListener('blur', handleBlur);
+      // window.removeEventListener('focus', handleFocus);
+      // document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
