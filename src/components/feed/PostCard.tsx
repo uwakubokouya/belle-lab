@@ -67,7 +67,8 @@ export default function PostCard({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeletedLocally, setIsDeletedLocally] = useState(false);
 
-  const canManage = user?.is_admin || user?.id === castId || user?.id === storeProfileId;
+  const isSuperAdmin = user?.role === 'system' || user?.role === 'admin';
+  const canManage = isSuperAdmin || user?.id === castId || user?.id === storeProfileId;
   
   useEffect(() => {
       setLocalIsLocked(isLocked);
