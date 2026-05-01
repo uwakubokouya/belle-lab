@@ -2,7 +2,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import PostCard from "@/components/feed/PostCard";
-import { ChevronLeft, MessageCircle, Calendar, Lock, ArrowRight, UserPlus, ArrowLeft, AlertTriangle, CheckSquare, Square, Camera, X, ChevronRight, Heart, Check, Sparkles } from "lucide-react";
+import { ChevronLeft, MessageCircle, Calendar, Lock, ArrowRight, UserPlus, ArrowLeft, AlertTriangle, CheckSquare, Square, Camera, X, ChevronRight, Heart, Check, Sparkles, Star } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/providers/UserProvider';
 import { useState, useEffect } from "react";
@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { fetchBusinessEndTime, getLogicalBusinessDate, getAdjustedMinutes, getAdjustedNowMins } from "@/utils/businessTime";
 import MediaWatermark from '@/components/security/MediaWatermark';
 import ImageCropperModal from '@/components/ui/ImageCropperModal';
+import ReviewModal from '@/components/reviews/ReviewModal';
 
 export default function CastProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -27,9 +28,13 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [acceptsDms, setAcceptsDms] = useState(true);
   const [resolvedCastId, setResolvedCastId] = useState<string>(id);
-  const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'shifts'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'shifts' | 'reviews'>('timeline');
   const [weekOffset, setWeekOffset] = useState(0);
   const [weeklyShifts, setWeeklyShifts] = useState<{dateStr: string, displayDate: string, text: string}[]>([]);
+  
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewStats, setReviewStats] = useState({ average: 0, count: 0 });
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   
@@ -231,6 +236,29 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       if (prefData) {
           setCastPreferences(prefData);
       }
+
+      // 6. Fetch Reviews
+      const fetchReviews = async (castIdToFetch: string) => {
+         const { data: revs } = await supabase
+           .from('sns_reviews')
+           .select(`
+             id, rating, content, created_at, reviewer_id,
+             sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url)
+           `)
+           .eq('target_cast_id', castIdToFetch)
+           .order('created_at', { ascending: false });
+
+         if (revs) {
+            setReviews(revs);
+            if (revs.length > 0) {
+               const avg = revs.reduce((sum: number, r: any) => sum + r.rating, 0) / revs.length;
+               setReviewStats({ average: Math.round(avg * 10) / 10, count: revs.length });
+            } else {
+               setReviewStats({ average: 0, count: 0 });
+            }
+         }
+      };
+      await fetchReviews(actualCastId);
 
       // Fetch upcoming week's shifts
       const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -1040,6 +1068,14 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 {cast.name || "名称未設定"}
             </h1>
 
+            {reviewStats.count > 0 && (
+                <div className="flex items-center gap-1 mt-2 mb-4 text-xs font-bold tracking-widest text-[#B8860B]">
+                    <Star size={14} className="fill-[#B8860B]" />
+                    <span>{reviewStats.average.toFixed(1)}</span>
+                    <span className="text-[#777777] font-normal text-[10px] ml-1">({reviewStats.count}件の口コミ)</span>
+                </div>
+            )}
+
             {profileData.storeName && profileData.storeProfileId && (
                 <Link href={`/cast/${profileData.storeProfileId}`} className="inline-block mt-1 mb-2">
                   <span className="text-[10px] text-[#777777] bg-[#F9F9F9] border border-[#E5E5E5] px-2 py-0.5 tracking-widest hover:bg-[#E5E5E5] transition-colors">
@@ -1102,6 +1138,15 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
           </button>
           {!isNonCastProfile && (
           <button 
+             onClick={() => setActiveTab('reviews')}
+             className={`flex-1 py-4 text-[11px] tracking-widest border-r border-[#E5E5E5] relative transition-colors ${activeTab === 'reviews' ? 'font-bold text-black bg-[#F9F9F9]' : 'font-normal text-[#777777] hover:bg-[#F9F9F9]'}`}
+          >
+            口コミ
+            {activeTab === 'reviews' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
+          </button>
+          )}
+          {!isNonCastProfile && (
+          <button 
              onClick={() => setActiveTab('shifts')}
              className={`flex-1 py-4 text-[11px] tracking-widest relative transition-colors ${activeTab === 'shifts' ? 'font-bold text-black bg-[#F9F9F9]' : 'font-normal text-[#777777] hover:bg-[#F9F9F9]'}`}
           >
@@ -1150,6 +1195,56 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                     <p className="text-xs tracking-widest">まだ画像/動画はありません</p>
                 </div>
             )
+        ) : activeTab === 'reviews' ? (
+            <div className="bg-[#F9F9F9] min-h-[300px]">
+                {/* 投稿ボタン */}
+                {user?.id !== resolvedCastId && !isNonCastProfile && (
+                    <div className="p-4 bg-white border-b border-[#E5E5E5] flex justify-center">
+                        <button 
+                            onClick={() => setShowReviewModal(true)}
+                            className="premium-btn w-full max-w-xs flex items-center justify-center gap-2 py-3 text-[11px] tracking-widest"
+                        >
+                            <Star size={14} className="stroke-[1.5]" />
+                            口コミを投稿する
+                        </button>
+                    </div>
+                )}
+                
+                {/* 口コミリスト */}
+                {reviews.length > 0 ? (
+                    <div className="space-y-[1px] bg-[#E5E5E5]">
+                        {reviews.map(review => (
+                            <div key={review.id} className="bg-white p-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#F9F9F9] border border-[#E5E5E5]">
+                                            <img 
+                                                src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                                alt="User" 
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <div>
+                                            <div className="text-[11px] font-bold tracking-widest">{review.sns_profiles?.name || "匿名ユーザー"}</div>
+                                            <div className="text-[9px] text-[#777777]">{new Date(review.created_at).toLocaleDateString('ja-JP')}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex text-[#B8860B]">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star key={i} size={12} className={i < review.rating ? "fill-[#B8860B]" : "fill-transparent text-[#E5E5E5]"} />
+                                        ))}
+                                    </div>
+                                </div>
+                                <p className="text-xs text-[#333333] leading-relaxed whitespace-pre-wrap">{review.content}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-[#777777]">
+                        <p className="text-xs tracking-widest">まだ口コミはありません</p>
+                    </div>
+                )}
+            </div>
         ) : (
             <div className="bg-white p-6 min-h-[300px]">
                 <div className="flex items-center justify-between mb-6">
@@ -1469,6 +1564,36 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
           onCancel={() => setPendingCrop(null)}
         />
       )}
+
+      {/* Review Modal */}
+      <ReviewModal 
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        targetCastId={resolvedCastId}
+        castName={cast.name || "キャスト"}
+        onReviewSubmitted={() => {
+            // Re-fetch reviews to show the new one
+            const fetchReviews = async () => {
+              const { data: revs } = await supabase
+                .from('sns_reviews')
+                .select(`
+                  id, rating, content, created_at, reviewer_id,
+                  sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url)
+                `)
+                .eq('target_cast_id', resolvedCastId)
+                .order('created_at', { ascending: false });
+
+              if (revs) {
+                 setReviews(revs);
+                 if (revs.length > 0) {
+                    const avg = revs.reduce((sum: number, r: any) => sum + r.rating, 0) / revs.length;
+                    setReviewStats({ average: Math.round(avg * 10) / 10, count: revs.length });
+                 }
+              }
+            };
+            fetchReviews();
+        }}
+      />
     </>
   );
 }

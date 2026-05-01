@@ -356,9 +356,14 @@ export default function Home() {
                    const eMin = getAdjustedMinutes(avail.shift_end, businessEndTime.hour);
                    const adjCurrentMin = getAdjustedNowMins(now, businessEndTime.hour);
                    if (adjCurrentMin >= eMin) {
-                       statusText = "受付終了";
-                       nextAvailableTime = "次回出勤: 未定";
-                   }
+                        statusText = "受付終了";
+                        if (avail.next_shift_date) {
+                            const dt = new Date(avail.next_shift_date);
+                            nextAvailableTime = `次回出勤: ${dt.getMonth() + 1}/${dt.getDate()}`;
+                        } else {
+                            nextAvailableTime = "次回出勤: 未定";
+                        }
+                    }
                }
                
                if (statusText === "本日出勤中") {
@@ -391,7 +396,12 @@ export default function Home() {
 
                    if (cursorM + MIN_GAP > seM) {
                        if (am >= seM) { statusText = "受付終了"; } else { statusText = "ご予約完売"; }
-                       nextAvailableTime = "次回出勤: 未定";
+                        if (avail.next_shift_date) {
+                            const dt = new Date(avail.next_shift_date);
+                            nextAvailableTime = `次回出勤: ${dt.getMonth() + 1}/${dt.getDate()}`;
+                        } else {
+                            nextAvailableTime = "次回出勤: 未定";
+                        }
                    } else {
                        if (cursorM <= am) {
                            nextAvailableTime = "待機中";
