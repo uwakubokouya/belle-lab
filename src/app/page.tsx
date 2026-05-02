@@ -12,14 +12,14 @@ export default function AreaSelectionPage() {
   // --- Start Added Logic for Auto-Resume ---
   const [lastArea, setLastArea] = React.useState<string | null>(null);
   React.useEffect(() => {
-    if (isTestMode) {
-      router.replace('/福岡');
-      return;
-    }
-
     // 1. Check user role and redirect to their prefecture if applicable
     const checkUserArea = async () => {
-      if (!user) return;
+      if (!user) {
+         if (isTestMode && !isLoading) {
+             router.replace('/福岡');
+         }
+         return;
+      }
 
       if (user.role === 'cast') {
         router.replace(`/cast/${user.id}`);
@@ -33,13 +33,18 @@ export default function AreaSelectionPage() {
           .maybeSingle();
 
         if (storeProfile?.prefecture) {
-          router.replace(`/${encodeURIComponent(storeProfile.prefecture)}`);
+          router.replace(isTestMode ? '/福岡' : `/${encodeURIComponent(storeProfile.prefecture)}`);
           return; // Exit after redirect
         }
       }
+      
+      if (isTestMode) {
+          router.replace('/福岡');
+          return;
+      }
     };
 
-    if (!isLoading && user) {
+    if (!isLoading) {
       checkUserArea();
     }
 
