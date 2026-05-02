@@ -37,7 +37,10 @@ export default function BottomNav() {
   const isHomeActive = pathname === homePath || pathname === '/' || (role === 'cast' && pathname === `/cast/${user?.id}`);
 
   return (
-    <nav className="fixed bottom-0 w-full max-w-md mx-auto bg-white border-t border-[#E5E5E5] z-50 px-6 py-3 pb-8 flex justify-around items-center text-[#777777]">
+    <nav 
+      className="fixed bottom-0 w-full max-w-md mx-auto bg-white border-t border-[#E5E5E5] z-50 px-6 pt-3 flex justify-around items-center text-[#777777]"
+      style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+    >
       <Link href={homePath} className="flex flex-col items-center gap-1 hover:text-black transition-colors">
         <Home size={20} className={isHomeActive ? 'text-black stroke-[2.5]' : 'stroke-2'} />
         <span className={`text-[10px] font-normal tracking-widest ${isHomeActive ? 'text-black font-bold' : ''}`}>ホーム</span>
