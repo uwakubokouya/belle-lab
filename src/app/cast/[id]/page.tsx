@@ -11,6 +11,7 @@ import { fetchBusinessEndTime, getLogicalBusinessDate, getAdjustedMinutes, getAd
 import MediaWatermark from '@/components/security/MediaWatermark';
 import ImageCropperModal from '@/components/ui/ImageCropperModal';
 import ReviewModal from '@/components/reviews/ReviewModal';
+import { fetchStoreCasts } from '@/utils/fetchCasts';
 
 export default function CastProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -28,7 +29,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [acceptsDms, setAcceptsDms] = useState(true);
   const [resolvedCastId, setResolvedCastId] = useState<string>(id);
-  const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'shifts' | 'reviews'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'shifts' | 'reviews' | 'casts' | 'cast_grid'>('timeline');
   const [weekOffset, setWeekOffset] = useState(0);
   const [weeklyShifts, setWeeklyShifts] = useState<{dateStr: string, displayDate: string, text: string}[]>([]);
   
@@ -42,6 +43,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
   const [likedFollowerIds, setLikedFollowerIds] = useState<Set<string>>(new Set());
+
+  const [storeCasts, setStoreCasts] = useState<any[]>([]);
+  const [isLoadingCasts, setIsLoadingCasts] = useState(false);
 
   interface ProfileData {
     name: string;
@@ -58,6 +62,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
     isAdmin?: boolean;
     storeName?: string;
     storeProfileId?: string;
+    phone?: string;
   }
 
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -107,7 +112,19 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 .upload(fileName, editForm._avatarFile, { upsert: true });
             
             if (!uploadError) {
-                const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+                setIsLoadingCasts(true);
+              let sId;
+              const { data: pData } = await supabase.from('profiles').select('store_id').eq('username', profileData.phone || 'dummy').maybeSingle();
+              if (pData?.store_id) {
+                  sId = pData.store_id;
+              } else if (profileData.storeProfileId) {
+                  // If for some reason we have a storeProfileId, try to use it as a fallback but usually it's wrong for this
+                  sId = 'ef92279f-3f19-47e7-b542-69de5906ab9b'; 
+              } else {
+                  sId = 'ef92279f-3f19-47e7-b542-69de5906ab9b'; // fallback for the prototype
+              }
+              
+              const castsData = await fetchStoreCasts(sId); const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
                 finalAvatarUrl = data.publicUrl;
             }
         }
@@ -215,7 +232,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         isAdmin: profile?.is_admin,
         storeName: sName,
         storeProfileId: sProfileId,
-        cover: profile?.cover_url || ""
+        cover: profile?.cover_url || "",
+        phone: profile?.phone || storeCast?.login_id
       }));
 
       if (profile && profile.accepts_dms === false) {
@@ -489,6 +507,28 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
     
     fetchFollowData();
   }, [id, user]);
+
+  useEffect(() => {
+      if ((activeTab === 'casts' || activeTab === 'cast_grid') && profileData.role === 'store') {
+          const loadCasts = async () => {
+              setIsLoadingCasts(true);
+              let sId;
+              const { data: pData } = await supabase.from('profiles').select('store_id').eq('username', profileData.phone || 'dummy').maybeSingle();
+              if (pData?.store_id) {
+                  sId = pData.store_id;
+              } else if (profileData.storeProfileId) {
+                  sId = 'ef92279f-3f19-47e7-b542-69de5906ab9b'; 
+              } else {
+                  sId = 'ef92279f-3f19-47e7-b542-69de5906ab9b'; // fallback for the prototype
+              }
+              
+              const castsData = await fetchStoreCasts(sId);
+              setStoreCasts(castsData);
+              setIsLoadingCasts(false);
+          };
+          loadCasts();
+      }
+  }, [activeTab, profileData.role, profileData.storeProfileId, profileData.phone]);
 
   // PVトラッキング
   useEffect(() => {
@@ -1136,6 +1176,24 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
             ギャラリー
             {activeTab === 'gallery' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
           </button>
+          {profileData.role === 'store' && (
+          <button 
+             onClick={() => setActiveTab('casts')}
+             className={`flex-1 py-4 text-[11px] tracking-widest border-r border-[#E5E5E5] relative transition-colors ${activeTab === 'casts' ? 'font-bold text-black bg-[#F9F9F9]' : 'font-normal text-[#777777] hover:bg-[#F9F9F9]'}`}
+          >
+            出勤情報
+            {activeTab === 'casts' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
+          </button>
+          )}
+          {profileData.role === 'store' && (
+          <button 
+             onClick={() => setActiveTab('cast_grid')}
+             className={`flex-1 py-4 text-[11px] tracking-widest border-r border-[#E5E5E5] relative transition-colors ${activeTab === 'cast_grid' ? 'font-bold text-black bg-[#F9F9F9]' : 'font-normal text-[#777777] hover:bg-[#F9F9F9]'}`}
+          >
+            キャスト一覧
+            {activeTab === 'cast_grid' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
+          </button>
+          )}
           {!isNonCastProfile && (
           <button 
              onClick={() => setActiveTab('reviews')}
@@ -1195,6 +1253,93 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                     <p className="text-xs tracking-widest">まだ画像/動画はありません</p>
                 </div>
             )
+        ) : activeTab === 'casts' && profileData.role === 'store' ? (
+            <div className="bg-[#F9F9F9] min-h-[300px]">
+                {isLoadingCasts ? (
+                    <div className="flex justify-center py-20">
+                        <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : storeCasts.length > 0 ? (
+                    <div className="space-y-[1px] bg-[#E5E5E5]">
+                        {storeCasts.map(cast => (
+                            <Link href={`/cast/${cast.id}`} key={cast.id} className="bg-white p-4 flex gap-4 hover:bg-[#FCFCFC] transition-colors group block">
+                                <div className="w-16 h-16 shrink-0 bg-[#F9F9F9] border border-[#E5E5E5] overflow-hidden">
+                                    <img 
+                                        src={cast.sns_avatar_url || cast.profile_image_url || cast.avatar_url || "/images/no-photo.jpg"} 
+                                        alt={cast.name} 
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <h3 className="text-sm font-bold tracking-widest text-black truncate">{cast.name}</h3>
+                                        {cast.isNew && (
+                                            <span className="bg-[#22C55E] text-white text-[8px] font-bold px-1.5 py-0.5 tracking-widest">NEW</span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 mb-2">
+                                        {cast.statusText === 'お休み' ? (
+                                            <span className="text-[9px] px-1.5 py-0.5 bg-black text-white border border-black font-bold tracking-widest">お休み</span>
+                                        ) : cast.statusText === '受付終了' ? (
+                                            <span className="text-[9px] px-1.5 py-0.5 bg-[#E5E5E5] text-[#777777] border border-[#E5E5E5] font-bold tracking-widest">受付終了</span>
+                                        ) : cast.statusText === 'ご予約完売' ? (
+                                            <span className="text-[9px] px-1.5 py-0.5 bg-white text-black border border-black font-bold tracking-widest">ご予約完売</span>
+                                        ) : cast.statusText === '本日出勤中' ? (
+                                            <span className="text-[9px] px-1.5 py-0.5 bg-white text-black border border-black font-bold tracking-widest flex items-center gap-1">
+                                                <span className={`w-1.5 h-1.5 shrink-0 ${cast.nextAvailableTime === '待機中' ? 'bg-[#E02424] animate-pulse' : 'bg-black'}`}></span>
+                                                {cast.nextAvailableTime === '待機中' ? '待機中' : `次回 ${cast.nextAvailableTime}〜`}
+                                            </span>
+                                        ) : cast.nextAvailableTime && cast.nextAvailableTime.includes('次回出勤: ') && !cast.nextAvailableTime.includes('未定') ? (
+                                            <span className="text-[9px] px-1.5 py-0.5 bg-[#F9F9F9] text-black border border-[#E5E5E5] tracking-widest">
+                                                {cast.nextAvailableTime.replace('次回出勤: ', '次回出勤 ')}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    <p className="text-[11px] text-[#777777] leading-relaxed line-clamp-2">
+                                        {cast.sns_bio || cast.bio || "よろしくお願いします。"}
+                                    </p>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-[#777777]">
+                        <p className="text-xs tracking-widest">キャストがいません</p>
+                    </div>
+                )}
+            </div>
+        ) : activeTab === 'cast_grid' && profileData.role === 'store' ? (
+            <div className="bg-[#F9F9F9] min-h-[300px]">
+                {isLoadingCasts ? (
+                    <div className="flex justify-center py-20">
+                        <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : storeCasts.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-[1px] bg-[#E5E5E5]">
+                        {storeCasts.map(cast => (
+                            <Link href={`/cast/${cast.id}`} key={cast.id} className="relative aspect-[3/4] overflow-hidden bg-white group block">
+                                <img 
+                                    src={cast.sns_avatar_url || cast.profile_image_url || cast.avatar_url || "/images/no-photo.jpg"} 
+                                    alt={cast.name} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-8">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <h3 className="text-[10px] font-bold tracking-widest text-white truncate drop-shadow-md">{cast.name}</h3>
+                                        {cast.isNew && (
+                                            <span className="bg-[#22C55E] text-white text-[7px] font-bold px-1 py-0.5 tracking-widest leading-none">NEW</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-[#777777]">
+                        <p className="text-xs tracking-widest">キャストがいません</p>
+                    </div>
+                )}
+            </div>
         ) : activeTab === 'reviews' ? (
             <div className="bg-[#F9F9F9] min-h-[300px]">
                 {/* 投稿ボタン */}

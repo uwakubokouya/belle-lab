@@ -134,7 +134,8 @@ export default function PostCreationPage() {
                     className="w-full bg-transparent text-black text-lg resize-none outline-none min-h-[150px] placeholder:text-[#E5E5E5] mb-6 font-light tracking-wide leading-relaxed"
                 />
 
-                {/* AI Assistant Button */}
+                {/* AI Assistant Button - Temporarily hidden */}
+                {false && (
                 <button 
                     onClick={handleAIGenerate}
                     disabled={isGenerating}
@@ -152,6 +153,7 @@ export default function PostCreationPage() {
                         </>
                     )}
                 </button>
+                )}
 
                 {/* Post Type Selection */}
                 <div className="mb-8">
