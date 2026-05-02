@@ -924,7 +924,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
              
              <div className="text-xs text-[#333333] tracking-widest leading-relaxed mb-8 flex flex-col gap-4 text-center">
                 <p>
-                  以下の番号へ発信しますか？
+                  ご予約やお問い合わせはこちらからがスムーズです
                 </p>
                 <p className="text-lg font-bold tracking-widest">
                   {profileData.contactPhone}
