@@ -2,7 +2,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import PostCard from "@/components/feed/PostCard";
-import { ChevronLeft, MessageCircle, Calendar, Lock, ArrowRight, UserPlus, ArrowLeft, AlertTriangle, CheckSquare, Square, Camera, X, ChevronRight, Heart, Check, Sparkles, Star } from "lucide-react";
+import { ChevronLeft, MessageCircle, Calendar, Lock, ArrowRight, UserPlus, ArrowLeft, AlertTriangle, CheckSquare, Square, Camera, X, ChevronRight, Heart, Check, Sparkles, Star, Phone } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/providers/UserProvider';
 import { useState, useEffect } from "react";
@@ -21,6 +21,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
   const [showDMWarning, setShowDMWarning] = useState(false);
   const [showFollowPromptModal, setShowFollowPromptModal] = useState(false);
   const [showDMDisabledModal, setShowDMDisabledModal] = useState(false);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [doNotShowAgain, setDoNotShowAgain] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -63,6 +64,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
     storeName?: string;
     storeProfileId?: string;
     phone?: string;
+    contactPhone?: string;
   }
 
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -196,6 +198,15 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // Fetch Store Info for Badge
       let sName = "";
       let sProfileId = "";
+      let contactPhone = "";
+      
+      if (profile?.role === 'store' && profile.phone) {
+          const { data: sProfile } = await supabase.from('profiles').select('contact_phone').eq('username', profile.phone).eq('role', 'admin').maybeSingle();
+          if (sProfile) {
+              contactPhone = sProfile.contact_phone || "";
+          }
+      }
+      
       if (storeCast && storeCast.store_id) {
           const { data: sProfile } = await supabase.from('profiles').select('username, full_name').eq('store_id', storeCast.store_id).eq('role', 'admin').maybeSingle();
           if (sProfile) {
@@ -233,7 +244,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         storeName: sName,
         storeProfileId: sProfileId,
         cover: profile?.cover_url || "",
-        phone: profile?.phone || storeCast?.login_id
+        phone: profile?.phone || storeCast?.login_id,
+        contactPhone
       }));
 
       if (profile && profile.accepts_dms === false) {
@@ -901,6 +913,43 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
           </div>
       )}
 
+      {/* Phone Prompt Modal */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white w-full max-w-sm p-6 border border-[#E5E5E5] flex flex-col shadow-sm">
+             <div className="flex items-center gap-3 border-b border-black pb-4 mb-6">
+                <Phone size={20} className="stroke-[1.5]" />
+                <h3 className="text-sm font-bold tracking-widest uppercase text-black">電話発信の確認</h3>
+             </div>
+             
+             <div className="text-xs text-[#333333] tracking-widest leading-relaxed mb-8 flex flex-col gap-4 text-center">
+                <p>
+                  以下の番号へ発信しますか？
+                </p>
+                <p className="text-lg font-bold tracking-widest">
+                  {profileData.contactPhone}
+                </p>
+             </div>
+             
+             <div className="flex gap-4">
+                 <button 
+                   onClick={() => setShowPhoneModal(false)}
+                   className="flex-1 py-3 text-[11px] tracking-widest border border-[#E5E5E5] text-[#777777] font-medium hover:bg-[#F9F9F9] transition-colors"
+                 >
+                   キャンセル
+                 </button>
+                 <a 
+                   href={`tel:${profileData.contactPhone}`}
+                   onClick={() => setShowPhoneModal(false)}
+                   className="flex-1 py-3 text-[11px] tracking-widest font-medium bg-black text-white hover:bg-black/80 transition-colors flex items-center justify-center gap-2"
+                 >
+                   発信する
+                 </a>
+             </div>
+           </div>
+        </div>
+      )}
+
       {/* Follow Prompt Modal Before DM */}
       {showFollowPromptModal && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -1040,6 +1089,14 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 <div />
             )}
             <div className="flex gap-2">
+                {profileData.role === 'store' && profileData.contactPhone && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setShowPhoneModal(true); }} 
+                      className="p-2 rounded-none border transition-colors flex items-center justify-center bg-white text-black border-black hover:bg-black hover:text-white"
+                    >
+                        <Phone size={18} className="stroke-[1.5]" />
+                    </button>
+                )}
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleMessage(); }} 
                   className={`p-2 rounded-none border transition-colors flex items-center justify-center ${
