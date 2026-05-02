@@ -1350,7 +1350,13 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 {user?.id !== resolvedCastId && !isNonCastProfile && (
                     <div className="p-4 bg-white border-b border-[#E5E5E5] flex justify-center">
                         <button 
-                            onClick={() => setShowReviewModal(true)}
+                            onClick={() => {
+                                if (!user) {
+                                    setShowAuthPrompt(true);
+                                    return;
+                                }
+                                setShowReviewModal(true);
+                            }}
                             className="premium-btn w-full max-w-xs flex items-center justify-center gap-2 py-3 text-[11px] tracking-widest"
                         >
                             <Star size={14} className="stroke-[1.5]" />
