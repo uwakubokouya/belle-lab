@@ -350,6 +350,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         .from('sns_posts')
         .select('*')
         .eq('cast_id', actualCastId)
+        .order('is_pinned', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (feedPosts) {
@@ -388,7 +389,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                  isWorkingToday: false, // TODO: Link to real shifts per post if needed
                  isLocked: p.isLocked,
                  lockReason: p.lockReason,
-                 postType: p.post_type
+                 postType: p.post_type,
+                 isPinned: p.is_pinned
              };
          }));
       }

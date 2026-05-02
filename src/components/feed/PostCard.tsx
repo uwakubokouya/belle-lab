@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { Heart, MessageCircle, Clock, CalendarCheck, Lock, ArrowLeft, Play, MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Clock, CalendarCheck, Lock, ArrowLeft, Play, MoreVertical, Edit, Trash2, Eye, Pin, PinOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/providers/UserProvider';
 import { useState, useEffect } from 'react';
@@ -28,6 +28,7 @@ interface PostProps {
   storeName?: string;
   storeProfileId?: string;
   postType?: string;
+  isPinned?: boolean;
 }
 
 export default function PostCard({
@@ -51,6 +52,7 @@ export default function PostCard({
   storeName,
   storeProfileId,
   postType,
+  isPinned = false,
 }: PostProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -66,6 +68,7 @@ export default function PostCard({
   const [editPostType, setEditPostType] = useState(postType || "全員");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeletedLocally, setIsDeletedLocally] = useState(false);
+  const [localIsPinned, setLocalIsPinned] = useState(isPinned);
 
   const isSuperAdmin = user?.role === 'system' || user?.role === 'admin';
   const canManage = isSuperAdmin || user?.id === castId || user?.id === storeProfileId;
@@ -112,8 +115,14 @@ export default function PostCard({
   return (
     <>
       {!isDeletedLocally && (
-        <article className="border-b border-[#E5E5E5] p-5 bg-white hover:bg-[#FCFCFC] transition-colors">
-      <div className="flex gap-4">
+        <article className="border-b border-[#E5E5E5] p-5 bg-white hover:bg-[#FCFCFC] transition-colors relative">
+      {localIsPinned && (
+          <div className="absolute top-0 left-0 right-0 bg-[#F9F9F9] border-b border-[#E5E5E5] py-1.5 px-5 flex items-center gap-1.5">
+              <Pin size={10} className="fill-[#777777] text-[#777777] rotate-45" />
+              <span className="text-[9px] font-bold tracking-widest text-[#777777]">固定されたポスト</span>
+          </div>
+      )}
+      <div className={`flex gap-4 ${localIsPinned ? 'mt-4' : ''}`}>
         {/* Avatar & Follow */}
         <div className="shrink-0 flex-col flex items-center">
           <Link href={`/cast/${castId}`} className="block relative w-12 h-12 rounded-none overflow-hidden border border-black bg-[#F9F9F9]">
@@ -165,18 +174,26 @@ export default function PostCard({
                   {showMenu && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={(e) => { e.preventDefault(); setShowMenu(false); }} />
-                      <div className="absolute right-0 mt-1 w-36 bg-white border border-black shadow-sm z-50 py-1">
+                      <div className="absolute right-0 mt-1 w-44 bg-white border border-black shadow-sm z-50 py-1">
                         <button 
-                          onClick={(e) => { e.preventDefault(); setShowMenu(false); setShowEditModal(true); }}
+                          onClick={async (e) => { 
+                             e.preventDefault(); 
+                             setShowMenu(false); 
+                             const newPinStatus = !localIsPinned;
+                             setLocalIsPinned(newPinStatus);
+                             await supabase.from('sns_posts').update({ is_pinned: newPinStatus }).eq('id', id);
+                             // Reload page to reflect sort order if needed, but local state update handles UI
+                             window.location.reload();
+                          }}
                           className="w-full text-left px-4 py-2 text-xs tracking-widest hover:bg-[#F9F9F9] transition-colors flex items-center gap-2"
                         >
-                          <Edit size={12} /> 編集
+                          {localIsPinned ? <PinOff size={12} /> : <Pin size={12} />} {localIsPinned ? 'ピン留め解除' : 'ピン留めする'}
                         </button>
                         <button 
                           onClick={(e) => { e.preventDefault(); setShowMenu(false); setShowEditModal(true); }}
                           className="w-full text-left px-4 py-2 text-xs tracking-widest hover:bg-[#F9F9F9] transition-colors flex items-center gap-2"
                         >
-                          <Eye size={12} /> 公開範囲変更
+                          <Edit size={12} /> 編集
                         </button>
                         <button 
                           onClick={async (e) => {
