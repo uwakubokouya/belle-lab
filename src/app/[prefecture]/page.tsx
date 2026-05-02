@@ -32,15 +32,17 @@ export default function Home() {
       router.replace('/');
     }
   }, [prefecture, router]);
-  const [activeTab, setActiveTab] = useState<string>('official');
-  
-  useEffect(() => {
-    const saved = sessionStorage.getItem(`home_tab_${prefecture}`);
-    if (saved && ['official', 'following', 'recommended', 'working', 'summary', 'admin_posts'].includes(saved)) {
-      setActiveTab(saved);
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem(`home_tab_${prefecture}`);
+      if (saved && ['official', 'following', 'recommended', 'working', 'summary', 'admin_posts'].includes(saved)) {
+        return saved;
+      }
     }
-  }, [prefecture]);
+    return 'official';
+  });
 
+  // Remove the useEffect that was overriding it on mount since we now do it synchronously
   useEffect(() => {
     if (activeTab) {
       sessionStorage.setItem(`home_tab_${prefecture}`, activeTab);

@@ -19,14 +19,15 @@ export default function SearchPage() {
   }, [prefecture, router]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
-
-  useEffect(() => {
-    const saved = sessionStorage.getItem(`search_tab_${prefecture}`);
-    if (saved && ['all', 'working', 'new'].includes(saved)) {
-      setActiveFilter(saved);
+  const [activeFilter, setActiveFilter] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem(`search_tab_${prefecture}`);
+      if (saved && ['all', 'working', 'new'].includes(saved)) {
+        return saved;
+      }
     }
-  }, [prefecture]);
+    return 'all';
+  });
 
   useEffect(() => {
     if (activeFilter) {
