@@ -6,12 +6,17 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function AreaSelectionPage() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, isTestMode } = useUser();
   const router = useRouter();
 
   // --- Start Added Logic for Auto-Resume ---
   const [lastArea, setLastArea] = React.useState<string | null>(null);
   React.useEffect(() => {
+    if (isTestMode) {
+      router.replace('/福岡');
+      return;
+    }
+
     // 1. Check user role and redirect to their prefecture if applicable
     const checkUserArea = async () => {
       if (!user) return;
@@ -45,7 +50,7 @@ export default function AreaSelectionPage() {
     } else if (saved) {
       setLastArea(saved);
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, isTestMode]);
   // --- End Added Logic ---
   const regions = [
     { name: "北海道・東北", prefectures: ["北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島"] },

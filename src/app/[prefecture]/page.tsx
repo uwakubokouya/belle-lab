@@ -33,7 +33,14 @@ export default function Home() {
     }
   }, [prefecture, router]);
   const [activeTab, setActiveTab] = useState<string>('official');
-  const { user, logout, isLoading: isUserLoading, hasUnreadMessages, hasUnreadNotifications, hasUnreadLikes, markLikesAsRead, markNotificationsAsRead } = useUser();
+  const { user, logout, isLoading: isUserLoading, hasUnreadMessages, hasUnreadNotifications, hasUnreadLikes, markLikesAsRead, markNotificationsAsRead, isTestMode } = useUser();
+
+  // テストモード中の強制リダイレクト
+  useEffect(() => {
+    if (isTestMode && prefecture !== '福岡') {
+      router.replace('/福岡');
+    }
+  }, [isTestMode, prefecture, router]);
   useEffect(() => { if ((user?.role === 'system' || user?.role === 'admin') && ['official', 'following', 'recommended', 'working'].includes(activeTab)) { setActiveTab('summary'); } }, [user, activeTab]);
 
   useEffect(() => {
@@ -577,12 +584,14 @@ export default function Home() {
                   <span className="text-[10px] tracking-widest text-black font-bold bg-[#F9F9F9] border border-[#E5E5E5] px-2 py-0.5">
                     {prefecture || "総合"}エリア
                   </span>
+                  {!isTestMode && (
                   <Link 
                     href="/"
                     className="text-[10px] tracking-widest text-[#777777] hover:text-black border border-[#E5E5E5] hover:border-black px-2 py-0.5 transition-colors"
                   >
                     エリア変更
                   </Link>
+                  )}
                 </>
               )}
             </div>
@@ -649,6 +658,13 @@ export default function Home() {
           </div>
         </div>
         
+        {/* Test Mode Badge */}
+        {isTestMode && user?.role === 'system' && (
+          <div className="w-full bg-[#E02424] text-white text-center text-[10px] py-1 font-bold tracking-widest">
+            ※現在福岡限定のテスト運用中です
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex w-full border-t border-[#E5E5E5]">
           {(user?.role === 'system' || user?.role === 'admin') ? (

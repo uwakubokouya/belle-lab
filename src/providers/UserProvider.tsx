@@ -40,6 +40,7 @@ interface UserContextType {
   markNotificationsAsRead: () => void;
   markLikesAsRead: () => Promise<void>;
   refreshUnreadFeedbacks: () => Promise<void>;
+  isTestMode: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -53,6 +54,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [hasUnreadFeedbacks, setHasUnreadFeedbacks] = useState(false);
   const [hasUnreadFootprints, setHasUnreadFootprints] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
   const router = useRouter();
 
     const checkUnreadFootprints = async (userId: string) => {
@@ -143,6 +145,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
          setHasUnreadNotifications(true);
       })
       .subscribe();
+
+    // Load global system settings
+    const loadSystemSettings = async () => {
+      try {
+        const { data } = await supabase.from('global_app_settings').select('value').eq('key', 'fukuoka_test_mode').maybeSingle();
+        if (data && data.value) {
+          setIsTestMode(data.value.enabled === true);
+        }
+      } catch (err) {
+        console.error("Failed to load system settings", err);
+      }
+    };
+    loadSystemSettings();
 
     // Listen for unread messages (basic global subscription or periodic fetch)
     const checkUnreadMessages = async (userId: string) => {
@@ -353,7 +368,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider value={{ 
-      user, logout, isMounted, isLoading, refreshProfile, hasUnreadNotifications, hasUnreadLikes, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints, checkUnreadFootprints: async () => { if (user?.id) await checkUnreadFootprints(user.id); }, markNotificationsAsRead, markLikesAsRead, refreshUnreadFeedbacks 
+      user, logout, isMounted, isLoading, refreshProfile, hasUnreadNotifications, hasUnreadLikes, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints, checkUnreadFootprints: async () => { if (user?.id) await checkUnreadFootprints(user.id); }, markNotificationsAsRead, markLikesAsRead, refreshUnreadFeedbacks, isTestMode 
     }}>
       {children}
     </UserContext.Provider>

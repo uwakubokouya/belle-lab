@@ -18,6 +18,7 @@ export default function SystemSettingsPage() {
   const [leaveFootprints, setLeaveFootprints] = useState(true);
   const [reservationReminders, setReservationReminders] = useState(true);
   const [appLockEnabled, setAppLockEnabled] = useState(false);
+  const [fukuokaTestMode, setFukuokaTestMode] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -47,6 +48,14 @@ export default function SystemSettingsPage() {
         setReservationReminders(data.reservation_reminders ?? true);
         setAppLockEnabled(data.app_lock_enabled ?? false);
       }
+
+      if (user.role === 'system') {
+        const { data: sysData } = await supabase.from('global_app_settings').select('value').eq('key', 'fukuoka_test_mode').maybeSingle();
+        if (sysData && sysData.value) {
+          setFukuokaTestMode(sysData.value.enabled === true);
+        }
+      }
+
       setIsFetching(false);
     };
 
@@ -79,6 +88,24 @@ export default function SystemSettingsPage() {
     } else {
       // 成功した場合、アプリ全体のグローバル設定情報も裏側で最新に更新しておく
       await refreshProfile();
+    }
+  };
+
+  const updateSystemSetting = async (key: string, value: boolean) => {
+    if (!user || user.role !== 'system') return;
+
+    if (key === 'fukuoka_test_mode') {
+      setFukuokaTestMode(value);
+      const { error } = await supabase.from('global_app_settings').upsert({
+        key: 'fukuoka_test_mode',
+        value: { enabled: value }
+      });
+      if (!error) {
+        // Force reload to apply global state changes immediately
+        window.location.href = '/';
+      } else {
+        console.error('システム設定の保存に失敗しました:', error);
+      }
     }
   };
 
@@ -152,6 +179,17 @@ export default function SystemSettingsPage() {
                 onChange={(val) => updateSetting('app_lock_enabled', val)} 
             />
         </div>
+
+        {user?.role === 'system' && (
+          <div className="bg-white border border-[#E5E5E5] px-6 mt-6">
+              <ToggleRow 
+                  label="福岡限定テストモード" 
+                  desc="【システム専用設定】アプリ全体を強制的に福岡エリアのみに限定し、エリア選択を隠します。"
+                  enabled={fukuokaTestMode} 
+                  onChange={(val) => updateSystemSetting('fukuoka_test_mode', val)} 
+              />
+          </div>
+        )}
       </main>
     </div>
   );
