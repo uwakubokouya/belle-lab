@@ -276,13 +276,13 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
          const { data: revs } = await supabase
            .from('sns_reviews')
            .select(`
-             id, rating, score, visited_date, content, created_at, reviewer_id, visibility,
+             id, rating, score, visited_date, content, created_at, reviewer_id, visibility, status,
              sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
            `)
            .eq('target_cast_id', castIdToFetch)
            .order('created_at', { ascending: false });
 
-         let finalRevs = revs || [];
+         let finalRevs = (revs || []).filter((r: any) => r.status !== 'rejected');
 
          // VIPでない場合、秘密の口コミのプレビュー件数を取得してダミーを追加
          if (!user?.is_vip && (!user || !user.is_admin)) {
@@ -1557,6 +1557,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                                 {review.visibility === 'secret' && (
                                                     <span className="text-[8px] bg-[#D4AF37] text-white px-1.5 py-0.5 font-normal tracking-widest rounded-none">VIP</span>
                                                 )}
+                                                {review.status === 'pending' && (
+                                                    <span className="text-[8px] bg-[#E02424] text-white px-1.5 py-0.5 font-normal tracking-widest rounded-none">審査中</span>
+                                                )}
                                             </div>
                                             <div className="text-[9px] text-[#777777]">
                                                 {new Date(review.created_at).toLocaleDateString('ja-JP')}
@@ -1919,17 +1922,20 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
               const { data: revs } = await supabase
                 .from('sns_reviews')
                 .select(`
-                  id, rating, content, created_at, reviewer_id,
-                  sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url)
+                  id, rating, content, created_at, reviewer_id, status,
+                  sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
                 `)
                 .eq('target_cast_id', resolvedCastId)
                 .order('created_at', { ascending: false });
 
               if (revs) {
-                 setReviews(revs);
-                 if (revs.length > 0) {
-                    const avg = revs.reduce((sum: number, r: any) => sum + r.rating, 0) / revs.length;
-                    setReviewStats({ average: Math.round(avg * 10) / 10, count: revs.length });
+                 const finalRevs = revs.filter((r: any) => r.status !== 'rejected');
+                 setReviews(finalRevs);
+                 if (finalRevs.length > 0) {
+                    const avg = finalRevs.reduce((sum: number, r: any) => sum + r.rating, 0) / finalRevs.length;
+                    setReviewStats({ average: Math.round(avg * 10) / 10, count: finalRevs.length });
+                 } else {
+                    setReviewStats({ average: 0, count: 0 });
                  }
               }
             };
