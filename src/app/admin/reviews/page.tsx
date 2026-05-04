@@ -14,7 +14,7 @@ export default function AdminReviewsPage() {
 
   useEffect(() => {
     if (isLoading || !user) return;
-    if (!user.is_admin && user.role !== 'store' && user.role !== 'management') {
+    if (!user.is_admin && user.role !== 'store') {
       router.push('/mypage');
       return;
     }
@@ -75,7 +75,7 @@ export default function AdminReviewsPage() {
     }
   };
 
-  if (!user?.is_admin && user?.role !== 'store' && user?.role !== 'management') {
+  if (!user?.is_admin && user?.role !== 'store') {
     return null;
   }
 
