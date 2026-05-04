@@ -863,7 +863,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                   <span className="font-bold text-[#B8860B]">100 pt</span>
                </div>
                <p className="text-[10px] text-[#777] leading-relaxed mt-2 pt-2 border-t border-[#E5E5E5]">
-                 ※ポイントは毎日のログインガチャや、口コミの投稿で貯めることができます。まずはポイントを貯めてランクアップを目指しましょう！
+                 ※ポイントは毎日のログインガチャや、ネット予約・口コミ投稿で貯めることができます。まずはポイントを貯めてランクアップを目指しましょう！
                </p>
             </div>
 
