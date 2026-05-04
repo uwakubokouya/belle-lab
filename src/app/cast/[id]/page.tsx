@@ -284,7 +284,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
          let finalRevs = revs || [];
 
          // VIPでない場合、秘密の口コミのプレビュー件数を取得してダミーを追加
-         if (!user?.is_vip && (!user || (user.role !== 'admin' && user.role !== 'management'))) {
+         if (!user?.is_vip && (!user || !user.is_admin)) {
              const { data: secretPreview } = await supabase.rpc('get_secret_review_preview', { p_cast_id: castIdToFetch });
              if (secretPreview && secretPreview.length > 0 && secretPreview[0].count > 0) {
                  const count = Number(secretPreview[0].count);
@@ -296,7 +296,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                          rating: ratings[i] || 5,
                          score: null,
                          visited_date: null,
-                         content: "VIP限定の裏口コミです。VIP会員になると内容を閲覧できます。",
+                         content: "VIP限定のVIP口コミです。VIP会員になると内容を閲覧できます。",
                          created_at: new Date().toISOString(),
                          visibility: 'secret',
                          is_dummy: true,
