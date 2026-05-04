@@ -30,7 +30,7 @@ export default function AdminReviewsPage() {
         .select(`
           id, rating, score, visited_date, content, created_at, visibility, status,
           reviewer_id, target_cast_id,
-          sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url),
+          sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip),
           casts!sns_reviews_target_cast_id_fkey(name, store_id)
         `)
         .eq('status', 'pending')
@@ -125,7 +125,12 @@ export default function AdminReviewsPage() {
                           alt="User" 
                           className="w-6 h-6 rounded-full border border-[#333] object-cover"
                         />
-                        <span className="text-xs font-bold tracking-widest">{review.sns_profiles?.name || "匿名ユーザー"}</span>
+                        <span className="text-xs font-bold tracking-widest flex items-center gap-2">
+                          {review.sns_profiles?.name || "匿名ユーザー"}
+                          {review.sns_profiles?.is_vip && (
+                            <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain" />
+                          )}
+                        </span>
                         <span className="text-[10px] text-[#777] ml-2">{new Date(review.created_at).toLocaleDateString('ja-JP')}</span>
                       </div>
                     </div>

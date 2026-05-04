@@ -2,9 +2,35 @@
 import { useUser } from "@/providers/UserProvider";
 import { LogOut, ChevronRight, User as UserIcon, Settings, Bell, CircleHelp, MessageSquare, ShieldAlert, Footprints, BarChart3 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function MyPage() {
   const { user, logout, hasUnreadNotifications, hasUnreadFootprints } = useUser();
+  const [isGachaLoading, setIsGachaLoading] = useState(false);
+
+  const handleDailyGacha = async () => {
+    if (!user) return;
+    setIsGachaLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('claim_daily_gacha_points', { p_user_id: user.id });
+      if (error) throw error;
+      
+      if (data.success) {
+         alert(`ガチャ成功！ ${data.points_added}ポイント獲得しました！\n現在のポイント: ${data.new_total}pt`);
+         window.location.reload();
+      } else if (data.error === 'ALREADY_CLAIMED') {
+         alert('本日のガチャは既に引いています。また明日挑戦してください！');
+      } else {
+         alert('エラーが発生しました。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('エラーが発生しました。');
+    } finally {
+      setIsGachaLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F9F9F9] pb-24 font-light">
@@ -14,22 +40,59 @@ export default function MyPage() {
 
       <main className="p-6 space-y-6">
         {/* User Card */}
-        <div className="bg-white border border-[#E5E5E5] p-6 flex items-center gap-4">
-          <div className="w-16 h-16 border border-black p-0.5 overflow-hidden">
-            {user?.avatar_url ? (
-               <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-               <div className="w-full h-full bg-[#E5E5E5] flex items-center justify-center text-[#777777]">
-                 <UserIcon size={24} className="stroke-[1.5]" />
-               </div>
-            )}
+        <div className="bg-white border border-[#E5E5E5] p-6 flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 border border-black p-0.5 overflow-hidden">
+              {user?.avatar_url ? (
+                 <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                 <div className="w-full h-full bg-[#E5E5E5] flex items-center justify-center text-[#777777]">
+                   <UserIcon size={24} className="stroke-[1.5]" />
+                 </div>
+              )}
+            </div>
+            <div>
+              <h2 className="text-lg font-normal tracking-widest uppercase mb-1 flex items-center gap-2">
+                {user?.name || "ゲスト"}
+                {user?.is_vip && (
+                  <img src="/images/vip-crown.png" alt="VIP" className="h-5 object-contain" />
+                )}
+              </h2>
+              <div className="flex gap-2">
+                <p className="text-[10px] text-[#777777] tracking-widest bg-[#F9F9F9] inline-block px-2 py-0.5 border border-[#E5E5E5]">
+                  {user?.is_admin ? "ADMIN" : user?.role === "cast" ? "キャスト" : "お客様"}
+                </p>
+                {user?.role === 'customer' && user?.rank && user.rank !== 'Standard' && (
+                  <p className="text-[10px] text-white tracking-widest bg-black inline-block px-2 py-0.5 border border-black">
+                    {user.rank}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-normal tracking-widest uppercase mb-1">{user?.name || "ゲスト"}</h2>
-            <p className="text-[10px] text-[#777777] tracking-widest bg-[#F9F9F9] inline-block px-2 py-0.5 border border-[#E5E5E5]">
-              {user?.is_admin ? "ADMIN" : user?.role === "cast" ? "キャスト" : "お客様"}
-            </p>
-          </div>
+          
+          {/* Points & Rank section for customers */}
+          {user?.role === 'customer' && (
+             <div className="border-t border-[#E5E5E5] pt-4 mt-2">
+                <div className="flex justify-between items-end mb-4">
+                   <div className="text-[11px] tracking-widest text-[#777777]">現在のポイント</div>
+                   <div className="text-xl font-light tracking-widest">{user?.points || 0} <span className="text-xs">pt</span></div>
+                </div>
+                
+                {/* Gacha Button */}
+                <button 
+                  onClick={handleDailyGacha}
+                  disabled={isGachaLoading}
+                  className="w-full py-3 bg-[#111] text-white text-xs tracking-widest border border-black hover:bg-white hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                >
+                  {isGachaLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    "今日のログインガチャを引く"
+                  )}
+                </button>
+             </div>
+          )}
         </div>
 
         {/* Post Creation Action (Cast & Admin Only) */}

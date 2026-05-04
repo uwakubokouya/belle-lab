@@ -4,6 +4,15 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 export type UserRole = 'customer' | 'cast' | 'store' | 'system' | 'admin';
+export type UserRank = 'Standard' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+
+export function calculateUserRank(points: number): UserRank {
+  if (points >= 3000) return 'Platinum';
+  if (points >= 1000) return 'Gold';
+  if (points >= 500) return 'Silver';
+  if (points >= 100) return 'Bronze';
+  return 'Standard';
+}
 
 export interface UserSettings {
   notifications_enabled: boolean;
@@ -24,6 +33,8 @@ export interface User {
   avatar_url?: string;
   is_vip?: boolean;
   stripe_customer_id?: string;
+  points: number;
+  rank: UserRank;
   settings: UserSettings;
 }
 
@@ -290,6 +301,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           finalAvatarUrl = "/images/no-photo.jpg";
         }
 
+        const points = data.points ?? 0;
+        const rank = calculateUserRank(points);
+
         setUser({
           id: data.id,
           name: data.name,
@@ -299,6 +313,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           avatar_url: finalAvatarUrl,
           is_vip: data.is_vip ?? false,
           stripe_customer_id: data.stripe_customer_id,
+          points,
+          rank,
           settings: {
             notifications_enabled: data.notifications_enabled ?? true,
             image_blur_enabled: data.image_blur_enabled ?? false,
