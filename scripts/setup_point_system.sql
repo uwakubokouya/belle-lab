@@ -1,15 +1,16 @@
--- 1. profiles テーブルに points カラムを追加
+-- 1. sns_profiles テーブルに points カラムを追加
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='points') THEN
-        ALTER TABLE public.profiles ADD COLUMN points integer NOT NULL DEFAULT 0;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sns_profiles' AND column_name='points') THEN
+        ALTER TABLE public.sns_profiles ADD COLUMN points integer NOT NULL DEFAULT 0;
     END IF;
 END $$;
 
 -- 2. points_history テーブルの作成
+DROP TABLE IF EXISTS public.points_history;
 CREATE TABLE IF NOT EXISTS public.points_history (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+    user_id uuid REFERENCES public.sns_profiles(id) ON DELETE CASCADE,
     action_type text NOT NULL, -- 'daily_gacha', 'review', 'reservation', etc.
     points_added integer NOT NULL,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -58,7 +59,7 @@ BEGIN
     VALUES (p_user_id, 'daily_gacha', earned_points);
 
     -- プロフィールのポイントを更新
-    UPDATE public.profiles
+    UPDATE public.sns_profiles
     SET points = points + earned_points
     WHERE id = p_user_id
     RETURNING points INTO new_total_points;

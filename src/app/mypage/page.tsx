@@ -24,9 +24,9 @@ export default function MyPage() {
       } else {
          alert('エラーが発生しました。');
       }
-    } catch (err) {
-      console.error(err);
-      alert('エラーが発生しました。');
+    } catch (err: any) {
+      console.error(err, err?.message, err?.details, err?.hint);
+      alert(`エラーが発生しました: ${err?.message || '不明なエラー'}`);
     } finally {
       setIsGachaLoading(false);
     }
