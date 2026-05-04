@@ -301,7 +301,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                          visibility: 'secret',
                          is_dummy: true,
                          sns_profiles: { name: "VIP会員", avatar_url: "/images/no-photo.jpg" }
-                     });
+                     } as any);
                  }
              }
          }
