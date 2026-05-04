@@ -22,6 +22,8 @@ export interface User {
   phone?: string;
   is_admin: boolean;
   avatar_url?: string;
+  is_vip?: boolean;
+  stripe_customer_id?: string;
   settings: UserSettings;
 }
 
@@ -295,6 +297,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           phone: data.phone,
           is_admin: data.is_admin ?? false,
           avatar_url: finalAvatarUrl,
+          is_vip: data.is_vip ?? false,
+          stripe_customer_id: data.stripe_customer_id,
           settings: {
             notifications_enabled: data.notifications_enabled ?? true,
             image_blur_enabled: data.image_blur_enabled ?? false,

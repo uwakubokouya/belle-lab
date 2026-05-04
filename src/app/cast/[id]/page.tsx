@@ -37,6 +37,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewStats, setReviewStats] = useState({ average: 0, count: 0 });
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReviewWarning, setShowReviewWarning] = useState(false);
+  const [agreedToReviewTerms, setAgreedToReviewTerms] = useState(false);
+  const [doNotShowReviewWarningAgain, setDoNotShowReviewWarningAgain] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   
@@ -272,20 +275,44 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
          const { data: revs } = await supabase
            .from('sns_reviews')
            .select(`
-             id, rating, content, created_at, reviewer_id,
+             id, rating, score, visited_date, content, created_at, reviewer_id, visibility,
              sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url)
            `)
            .eq('target_cast_id', castIdToFetch)
            .order('created_at', { ascending: false });
 
-         if (revs) {
-            setReviews(revs);
-            if (revs.length > 0) {
-               const avg = revs.reduce((sum: number, r: any) => sum + r.rating, 0) / revs.length;
-               setReviewStats({ average: Math.round(avg * 10) / 10, count: revs.length });
-            } else {
-               setReviewStats({ average: 0, count: 0 });
-            }
+         let finalRevs = revs || [];
+
+         // VIPでない場合、秘密の口コミのプレビュー件数を取得してダミーを追加
+         if (!user?.is_vip && (!user || (user.role !== 'admin' && user.role !== 'management'))) {
+             const { data: secretPreview } = await supabase.rpc('get_secret_review_preview', { p_cast_id: castIdToFetch });
+             if (secretPreview && secretPreview.length > 0 && secretPreview[0].count > 0) {
+                 const count = Number(secretPreview[0].count);
+                 const ratings = secretPreview[0].preview_ratings || [];
+                 
+                 for (let i = 0; i < count; i++) {
+                     finalRevs.push({
+                         id: `secret-dummy-${i}`,
+                         rating: ratings[i] || 5,
+                         score: null,
+                         visited_date: null,
+                         content: "VIP限定の裏口コミです。VIP会員になると内容を閲覧できます。",
+                         created_at: new Date().toISOString(),
+                         visibility: 'secret',
+                         is_dummy: true,
+                         sns_profiles: { name: "VIP会員", avatar_url: "/images/no-photo.jpg" }
+                     });
+                 }
+             }
+         }
+
+         if (finalRevs.length > 0) {
+            setReviews(finalRevs);
+            const avg = finalRevs.reduce((sum: number, r: any) => sum + r.rating, 0) / finalRevs.length;
+            setReviewStats({ average: Math.round(avg * 10) / 10, count: finalRevs.length });
+         } else {
+            setReviews([]);
+            setReviewStats({ average: 0, count: 0 });
          }
       };
       await fetchReviews(actualCastId);
@@ -1066,6 +1093,71 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
+      {/* Review Warning Modal Overlay */}
+      {showReviewWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm p-6 border border-[#E5E5E5] flex flex-col items-center">
+            <div className="w-12 h-12 border border-black flex items-center justify-center mb-4 text-black">
+              <AlertTriangle size={20} className="stroke-[1.5]" />
+            </div>
+            <h3 className="text-sm font-bold tracking-widest mb-4">注意事項</h3>
+            <div className="text-xs text-[#333333] leading-relaxed mb-6 bg-[#F9F9F9] p-4 text-justify">
+              <span className="font-bold block mb-2">【口コミ投稿に関するお願い】</span>
+              いつもご利用いただきありがとうございます。<br />
+              皆様に安心してご利用いただくため、投稿の際は以下の点にご配慮をお願いいたします。<br /><br />
+              ・特定の個人を識別できる情報の掲載や、過度な批判、誹謗中傷にあたる表現はお控えください。<br />
+              ・他のお客様が気持ちよく閲覧できるよう、節度ある表現での投稿をお願いいたします。<br /><br />
+              なお、著しく悪質と判断される内容や、法令に抵触する恐れがある投稿につきましては、提携弁護士と協議の上、然るべき措置を講じる場合がございます。健全なコミュニティ運営のため、何卒ご理解とご協力のほどお願い申し上げます。
+            </div>
+            
+            <div className="w-full space-y-4 mb-8 text-left">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div className="mt-0.5">
+                  {agreedToReviewTerms ? <CheckSquare size={16} className="text-black" /> : <Square size={16} className="text-[#777777]" />}
+                </div>
+                <span className={`text-xs tracking-widest transition-colors block ${agreedToReviewTerms ? 'text-black font-bold' : 'text-[#777777]'}`}>
+                  上記の内容に同意する
+                </span>
+                <input type="checkbox" className="hidden" checked={agreedToReviewTerms} onChange={() => setAgreedToReviewTerms(!agreedToReviewTerms)} />
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div>
+                  {doNotShowReviewWarningAgain ? <CheckSquare size={16} className="text-black" /> : <Square size={16} className="text-[#777777]" />}
+                </div>
+                <span className={`text-[10px] tracking-widest transition-colors ${doNotShowReviewWarningAgain ? 'text-black' : 'text-[#777777]'}`}>
+                  今後は表示しない
+                </span>
+                <input type="checkbox" className="hidden" checked={doNotShowReviewWarningAgain} onChange={() => setDoNotShowReviewWarningAgain(!doNotShowReviewWarningAgain)} />
+              </label>
+            </div>
+
+            <div className="w-full flex gap-3">
+              <button 
+                onClick={() => setShowReviewWarning(false)}
+                className="flex-1 py-3 border border-[#E5E5E5] text-xs tracking-widest text-[#777777] hover:bg-[#F9F9F9] transition-colors"
+              >
+                キャンセル
+              </button>
+              <button 
+                onClick={() => {
+                  if (!agreedToReviewTerms) return;
+                  if (doNotShowReviewWarningAgain && typeof window !== 'undefined') {
+                    localStorage.setItem('review_warning_hidden', 'true');
+                  }
+                  setShowReviewWarning(false);
+                  setShowReviewModal(true);
+                }}
+                disabled={!agreedToReviewTerms}
+                className="flex-1 py-3 bg-black text-white text-xs tracking-widest disabled:bg-[#E5E5E5] disabled:text-[#777777] transition-colors"
+              >
+                進む
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header / Cover */}
       <div 
         className={`relative h-56 bg-[#F9F9F9] border-b border-[#E5E5E5] flex items-center justify-center overflow-hidden ${cast.cover ? 'cursor-pointer' : ''}`}
@@ -1414,7 +1506,14 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                     setShowAuthPrompt(true);
                                     return;
                                 }
-                                setShowReviewModal(true);
+                                if (typeof window !== 'undefined') {
+                                    const hidden = localStorage.getItem('review_warning_hidden');
+                                    if (hidden === 'true') {
+                                        setShowReviewModal(true);
+                                        return;
+                                    }
+                                }
+                                setShowReviewWarning(true);
                             }}
                             className="premium-btn w-full max-w-xs flex items-center justify-center gap-2 py-3 text-[11px] tracking-widest"
                         >
@@ -1428,8 +1527,18 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 {reviews.length > 0 ? (
                     <div className="space-y-[1px] bg-[#E5E5E5]">
                         {reviews.map(review => (
-                            <div key={review.id} className="bg-white p-5">
-                                <div className="flex items-center justify-between mb-3">
+                            <div key={review.id} className="bg-white p-5 relative overflow-hidden">
+                                {review.visibility === 'secret' && review.is_dummy && (
+                                   <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/40 backdrop-blur-md p-6">
+                                      <Lock size={24} className="mb-2 text-[#D4AF37]" />
+                                      <p className="text-xs font-bold tracking-widest text-black mb-1">VIP限定の裏口コミ</p>
+                                      <p className="text-[10px] text-[#333333] mb-4">内容を見るにはVIP会員への登録が必要です</p>
+                                      <Link href="/vip" className="px-6 py-2 bg-[#D4AF37] text-white text-[10px] tracking-widest hover:bg-[#B5952F] transition-colors">
+                                        VIP会員になる
+                                      </Link>
+                                   </div>
+                                )}
+                                <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full overflow-hidden bg-[#F9F9F9] border border-[#E5E5E5]">
                                             <img 
@@ -1439,17 +1548,32 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                             />
                                         </div>
                                         <div>
-                                            <div className="text-[11px] font-bold tracking-widest">{review.sns_profiles?.name || "匿名ユーザー"}</div>
-                                            <div className="text-[9px] text-[#777777]">{new Date(review.created_at).toLocaleDateString('ja-JP')}</div>
+                                            <div className="text-[11px] font-bold tracking-widest flex items-center gap-2">
+                                                {review.sns_profiles?.name || "匿名ユーザー"}
+                                                {review.visibility === 'secret' && (
+                                                    <span className="text-[8px] bg-[#D4AF37] text-white px-1.5 py-0.5 font-normal tracking-widest rounded-none">VIP</span>
+                                                )}
+                                            </div>
+                                            <div className="text-[9px] text-[#777777]">
+                                                {new Date(review.created_at).toLocaleDateString('ja-JP')}
+                                                {review.visited_date && ` 訪問日: ${review.visited_date}`}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex text-[#B8860B]">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star key={i} size={12} className={i < review.rating ? "fill-[#B8860B]" : "fill-transparent text-[#E5E5E5]"} />
-                                        ))}
+                                    <div className="flex flex-col items-end">
+                                        <div className="flex text-[#B8860B] mb-1">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star key={i} size={12} className={i < review.rating ? "fill-[#B8860B]" : "fill-transparent text-[#E5E5E5]"} />
+                                            ))}
+                                        </div>
+                                        {review.score !== null && review.score !== undefined && (
+                                            <span className="text-[10px] font-bold tracking-widest text-[#B8860B]">{review.score}点</span>
+                                        )}
                                     </div>
                                 </div>
-                                <p className="text-xs text-[#333333] leading-relaxed whitespace-pre-wrap">{review.content}</p>
+                                <p className={`text-xs leading-relaxed whitespace-pre-wrap ${review.is_dummy ? 'text-[#E5E5E5] select-none' : 'text-[#333333]'}`}>
+                                    {review.is_dummy ? "この内容はダミーです。VIP会員になると実際のリアルな口コミテキストを閲覧できます。この内容はダミーです。" : review.content}
+                                </p>
                             </div>
                         ))}
                     </div>
