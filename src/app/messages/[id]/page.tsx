@@ -73,6 +73,15 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     if (!isUuid) return;
 
+    // アクセス権限チェック: 顧客はBronze(100pt) + VIPが必須
+    if (user.role === 'customer') {
+       if ((user.points ?? 0) < 100 || !user.is_vip) {
+           alert("キャストとのメッセージ機能はBronzeランク(100pt)以上のVIP会員限定です。");
+           router.push(`/cast/${id}`);
+           return;
+       }
+    }
+
     const fetchPartnerProfile = async () => {
        const { data } = await supabase.from('sns_profiles').select('name, avatar_url, bio, age_group, phone, role').eq('id', id).single();
        if (data) {

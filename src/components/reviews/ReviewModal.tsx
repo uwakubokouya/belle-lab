@@ -73,9 +73,17 @@ export default function ReviewModal({ isOpen, onClose, targetCastId, castName, o
       console.error("口コミ投稿エラー:", error);
       setErrorMsg("エラーが発生しました。もう一度お試しください。");
     } else {
+      // ポイント付与 (今回は一律5ptとする。新人判定ロジックが追加された場合はここを条件分岐する)
+      let earnedPoints = 5;
+      try {
+        await supabase.rpc('add_review_points', { p_user_id: user.id, p_points: earnedPoints });
+      } catch (ptErr) {
+        console.error("ポイント付与エラー:", ptErr);
+      }
+
       alert(visibility === 'secret' 
-        ? "VIP口コミを送信しました。運営の確認後に公開されます。" 
-        : "口コミを送信しました。承認後に公開されます。");
+        ? `VIP口コミを送信し、${earnedPoints}ポイントを獲得しました！運営の確認後に公開されます。` 
+        : `口コミを送信し、${earnedPoints}ポイントを獲得しました！承認後に公開されます。`);
       onReviewSubmitted();
       setContent("");
       setRating(5);
