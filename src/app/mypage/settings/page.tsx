@@ -401,7 +401,7 @@ export default function AccountSettingsPage() {
               
               <button 
                   type="button"
-                  onClick={() => router.push(`/cast/${user.id}`)}
+                  onClick={() => user?.id && router.push(`/cast/${user.id}`)}
                   className="w-full bg-white border border-[#E5E5E5] text-black hover:border-black py-4 flex items-center justify-center gap-2 tracking-widest text-xs transition-colors"
               >
                   <UserIcon size={14} className="stroke-[1.5]" />
