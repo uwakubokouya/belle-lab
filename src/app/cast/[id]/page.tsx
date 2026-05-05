@@ -1249,9 +1249,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                             </div>
                         )}
                     </div>
-                    {/* ランクバッジをアイコンの上（上端中央に重ねる）に配置 */}
+                    {/* ランクバッジをアイコンの下（下端中央に重ねる）に配置 */}
                     {profileData.rank && (
-                        <div className={`absolute -top-2.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 text-[8px] font-bold tracking-widest uppercase border shadow-sm whitespace-nowrap z-30 ${
+                        <div className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 text-[8px] font-bold tracking-widest uppercase border shadow-sm whitespace-nowrap z-30 ${
                             profileData.rank === 'Diamond' ? 'bg-[#111] text-[#D4AF37] border-[#D4AF37]' :
                             profileData.rank === 'Platinum' ? 'bg-white text-[#555] border-[#555]' :
                             profileData.rank === 'Gold' ? 'bg-[#F9F9F9] text-[#B8860B] border-[#B8860B]' :
