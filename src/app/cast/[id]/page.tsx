@@ -822,7 +822,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
   );
 
 
-  const isNonCastProfile = profileData.role === 'system' || profileData.role === 'store';
+  const isCustomerProfile = profileData.role === 'customer';
+  const isNonCastProfile = profileData.role === 'system' || profileData.role === 'store' || isCustomerProfile;
 
   return (
     <>
@@ -1361,6 +1362,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Tabs */}
+      {!isCustomerProfile && (
       <div className="flex w-full border-y border-[#E5E5E5] sticky top-0 bg-white/90 backdrop-blur z-30">
           <button 
              onClick={() => setActiveTab('timeline')}
@@ -1413,8 +1415,10 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
           </button>
           )}
       </div>
+      )}
 
       {/* Tab Content */}
+      {!isCustomerProfile && (
       <div className="pb-12 bg-[#F9F9F9] min-h-[300px]">
         {activeTab === 'timeline' ? (
             posts.length > 0 ? (
@@ -1702,6 +1706,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
             </div>
         )}
       </div>
+      )}
 
       {/* Fixed Sticky CTA Bottom for Cast Profile */}
       <div className="fixed bottom-[72px] left-0 right-0 max-w-md mx-auto p-4 z-40 bg-white border-t border-[#E5E5E5]">
