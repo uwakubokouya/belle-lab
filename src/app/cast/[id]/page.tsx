@@ -1283,13 +1283,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
 
         {/* Top bar controls */}
         <div className="absolute top-0 w-full p-4 flex justify-between items-center z-50">
-            {user?.id !== id && user?.id !== resolvedCastId ? (
-                <button onClick={(e) => { e.stopPropagation(); router.back(); }} className="bg-white p-2 rounded-none text-black border border-black hover:bg-black hover:text-white transition-colors">
-                    <ChevronLeft size={20} className="stroke-[1.5]" />
-                </button>
-            ) : (
-                <div />
-            )}
+            <button onClick={(e) => { e.stopPropagation(); router.back(); }} className="bg-white p-2 rounded-none text-black border border-black hover:bg-black hover:text-white transition-colors">
+                <ChevronLeft size={20} className="stroke-[1.5]" />
+            </button>
             <div className="flex gap-2">
                 {profileData.role === 'store' && profileData.contactPhone && (
                     <button 
@@ -1528,7 +1524,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Tabs for Customers */}
-      {isCustomerProfile && !(profileData.hide_reviews_and_favorites && user?.id !== resolvedCastId) && (
+      {isCustomerProfile && (
       <div className="flex w-full border-y border-[#E5E5E5] sticky top-0 bg-white/90 backdrop-blur z-30">
           <button 
              onClick={() => setActiveTab('posted_reviews')}
@@ -1545,15 +1541,6 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
             {activeTab === 'following_casts' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
           </button>
       </div>
-      )}
-
-      {isCustomerProfile && profileData.hide_reviews_and_favorites && user?.id !== resolvedCastId && (
-          <div className="pb-12 bg-[#F9F9F9] min-h-[300px] flex flex-col items-center pt-20 px-4 text-center">
-              <EyeOff size={32} className="mb-4 text-[#CCCCCC] stroke-[1.5]" />
-              <p className="text-xs text-[#777777] tracking-widest leading-relaxed">
-                  このユーザーは口コミと推しキャストを公開していません
-              </p>
-          </div>
       )}
 
       {/* Tab Content for Casts/Stores */}
@@ -1848,10 +1835,18 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Tab Content for Customers */}
-      {isCustomerProfile && !(profileData.hide_reviews_and_favorites && user?.id !== resolvedCastId) && (
+      {isCustomerProfile && (
       <div className="pb-12 bg-[#F9F9F9] min-h-[300px]">
         {activeTab === 'posted_reviews' ? (
-            <div className="bg-[#F9F9F9] px-4 py-6">
+            castPreferences?.op_options?.includes('HIDE_POSTED_REVIEWS') && user?.id !== resolvedCastId ? (
+                <div className="flex flex-col items-center pt-20 px-4 text-center">
+                    <EyeOff size={32} className="mb-4 text-[#CCCCCC] stroke-[1.5]" />
+                    <p className="text-xs text-[#777777] tracking-widest leading-relaxed">
+                        このユーザーは投稿した口コミを公開していません
+                    </p>
+                </div>
+            ) : (
+                <div className="bg-[#F9F9F9] px-4 py-6">
                 {postedReviews.length > 0 ? (
                     <div className="space-y-4">
                         {postedReviews.map((review) => (
@@ -1905,9 +1900,18 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                         <p className="text-xs tracking-widest">まだ口コミを投稿していません</p>
                     </div>
                 )}
-            </div>
+                </div>
+            )
         ) : activeTab === 'following_casts' ? (
-            <div className="bg-[#F9F9F9] px-4 py-6">
+            castPreferences?.op_options?.includes('HIDE_FOLLOWING_CASTS') && user?.id !== resolvedCastId ? (
+                <div className="flex flex-col items-center pt-20 px-4 text-center">
+                    <EyeOff size={32} className="mb-4 text-[#CCCCCC] stroke-[1.5]" />
+                    <p className="text-xs text-[#777777] tracking-widest leading-relaxed">
+                        このユーザーは推しキャストを公開していません
+                    </p>
+                </div>
+            ) : (
+                <div className="bg-[#F9F9F9] px-4 py-6">
                 {followingCasts.length > 0 ? (
                     <div className="grid grid-cols-4 gap-2">
                         {followingCasts.map((c) => (
@@ -1939,7 +1943,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                         <p className="text-xs tracking-widest">まだ推しキャストがいません</p>
                     </div>
                 )}
-            </div>
+                </div>
+            )
         ) : null}
       </div>
       )}

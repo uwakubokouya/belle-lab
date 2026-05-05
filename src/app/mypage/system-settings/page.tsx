@@ -12,7 +12,8 @@ export default function SystemSettingsPage() {
   const [isFetching, setIsFetching] = useState(true);
 
   // Toggle States
-  const [hideReviewsAndFavorites, setHideReviewsAndFavorites] = useState(false);
+  const [hidePostedReviews, setHidePostedReviews] = useState(false);
+  const [hideFollowingCasts, setHideFollowingCasts] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [imageBlurEnabled, setImageBlurEnabled] = useState(false);
   const [favoriteCastAlerts, setFavoriteCastAlerts] = useState(true);
@@ -57,6 +58,18 @@ export default function SystemSettingsPage() {
         }
       }
 
+      // Fetch sns_user_preferences for privacy toggles
+      const { data: prefData } = await supabase
+        .from('sns_user_preferences')
+        .select('op_options')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (prefData && prefData.op_options) {
+        setHidePostedReviews(prefData.op_options.includes('HIDE_POSTED_REVIEWS'));
+        setHideFollowingCasts(prefData.op_options.includes('HIDE_FOLLOWING_CASTS'));
+      }
+
       setIsFetching(false);
     };
 
@@ -78,17 +91,38 @@ export default function SystemSettingsPage() {
     }
 
     // 裏側でデータベースに送信
-    const { error } = await supabase
-      .from('sns_profiles')
-      .update({ [key]: value })
-      .eq('id', user.id);
+    if (key === 'hide_posted_reviews' || key === 'hide_following_casts') {
+      const { data: currentPrefs } = await supabase
+        .from('sns_user_preferences')
+        .select('op_options')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    if (error) {
-      console.error('設定の保存に失敗しました:', error);
-      // エラー時の処理（今回は簡易的にログ出力のみ）
+      let opOptions = currentPrefs?.op_options || [];
+      const targetFlag = key === 'hide_posted_reviews' ? 'HIDE_POSTED_REVIEWS' : 'HIDE_FOLLOWING_CASTS';
+
+      if (value) {
+        if (!opOptions.includes(targetFlag)) opOptions.push(targetFlag);
+      } else {
+        opOptions = opOptions.filter((opt: string) => opt !== targetFlag);
+      }
+
+      const { error: prefError } = await supabase
+        .from('sns_user_preferences')
+        .upsert({ user_id: user.id, op_options: opOptions, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+        
+      if (prefError) console.error('設定の保存に失敗しました:', prefError);
     } else {
-      // 成功した場合、アプリ全体のグローバル設定情報も裏側で最新に更新しておく
-      await refreshProfile();
+      const { error } = await supabase
+        .from('sns_profiles')
+        .update({ [key]: value })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('設定の保存に失敗しました:', error);
+      } else {
+        await refreshProfile();
+      }
     }
   };
 
@@ -180,10 +214,22 @@ export default function SystemSettingsPage() {
                 onChange={(val) => updateSetting('app_lock_enabled', val)} 
             />
             <ToggleRow 
-                label="口コミ・推しキャストを隠す" 
-                desc="ご自身のプロフィール上で、投稿した口コミと推しキャストを非公開にします。"
-                enabled={hideReviewsAndFavorites} 
-                onChange={(val) => updateSetting('hide_reviews_and_favorites', val)} 
+                label="投稿した口コミを隠す" 
+                desc="ご自身のプロフィール上で、投稿した口コミ一覧を他のユーザーから非公開にします。"
+                enabled={hidePostedReviews} 
+                onChange={(val) => {
+                    setHidePostedReviews(val);
+                    updateSetting('hide_posted_reviews', val);
+                }} 
+            />
+            <ToggleRow 
+                label="推しキャストを隠す" 
+                desc="ご自身のプロフィール上で、フォローしているキャスト一覧を他のユーザーから非公開にします。"
+                enabled={hideFollowingCasts} 
+                onChange={(val) => {
+                    setHideFollowingCasts(val);
+                    updateSetting('hide_following_casts', val);
+                }} 
             />
         </div>
 
