@@ -1576,7 +1576,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                 {review.visibility === 'secret' && review.is_dummy && (
                                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/40 backdrop-blur-md p-6">
                                       <Lock size={24} className="mb-2 text-[#D4AF37]" />
-                                      <p className="text-xs font-bold tracking-widest text-black mb-1">VIP限定の裏口コミ</p>
+                                      <p className="text-xs font-bold tracking-widest text-black mb-1">VIP限定のプレミアム口コミ</p>
                                       <p className="text-[10px] text-[#333333] mb-4">内容を見るにはVIP会員への登録が必要です</p>
                                       <Link href="/vip" className="px-6 py-2 bg-[#D4AF37] text-white text-[10px] tracking-widest hover:bg-[#B5952F] transition-colors">
                                         VIP会員になる
