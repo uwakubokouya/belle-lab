@@ -1421,10 +1421,12 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                         <Sparkles size={12} className="text-[#D4AF37]" />
                         接客の好み
                     </h3>
-                    {castPreferences && ['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].some(cat => castPreferences[cat] && castPreferences[cat].length > 0) ? (
+                    {castPreferences && ['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].some(cat => castPreferences[cat] && castPreferences[cat].filter((t: string) => !['HIDE_POSTED_REVIEWS', 'HIDE_FOLLOWING_CASTS'].includes(t)).length > 0) ? (
                         <div className="flex flex-wrap gap-1.5">
                             {['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].map(cat => (
-                                castPreferences[cat] && castPreferences[cat].map((tag: string, i: number) => (
+                                castPreferences[cat] && castPreferences[cat]
+                                    .filter((tag: string) => !['HIDE_POSTED_REVIEWS', 'HIDE_FOLLOWING_CASTS'].includes(tag))
+                                    .map((tag: string, i: number) => (
                                     <span key={`${cat}-${i}`} className="text-[10px] bg-[#F9F9F9] border border-[#E5E5E5] px-2 py-1 text-[#333333] tracking-widest">
                                         {tag}
                                     </span>
