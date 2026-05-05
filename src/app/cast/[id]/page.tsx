@@ -1382,6 +1382,24 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
             <p className="text-sm text-[#333333] whitespace-pre-wrap leading-relaxed font-light">
                 {cast.bio || ""}
             </p>
+
+            {isCustomerProfile && castPreferences && (
+                <div className="mt-6 pt-4 border-t border-[#E5E5E5]">
+                    <h3 className="text-[10px] font-bold tracking-widest text-black uppercase mb-3 flex items-center gap-1.5">
+                        <Sparkles size={12} className="text-[#D4AF37]" />
+                        接客の好み・ステータス
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5">
+                        {['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].map(cat => (
+                            castPreferences[cat] && castPreferences[cat].map((tag: string, i: number) => (
+                                <span key={`${cat}-${i}`} className="text-[10px] bg-[#F9F9F9] border border-[#E5E5E5] px-2 py-1 text-[#333333] tracking-widest">
+                                    {tag}
+                                </span>
+                            ))
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
 
         <div className="flex items-center justify-between text-xs mb-8 tracking-widest text-[#777777] border-y border-[#E5E5E5] py-4">
