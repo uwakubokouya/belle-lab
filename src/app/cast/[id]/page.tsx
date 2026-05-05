@@ -875,8 +875,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // Determine sender name based on context (if viewing own profile, use profileData.name, otherwise fetch from user context)
       // Since user context might lack name, fallback to a generic message if profile doesn't match
       const senderName = user?.id === id || user?.id === resolvedCastId 
-          ? (profileData.name || 'キャスト')
-          : (user?.name || user?.user_metadata?.name || 'キャスト');
+          : (user?.name || (user as any)?.user_metadata?.name || 'キャスト');
 
       // Insert LIKE into messages to bypass sns_notifications RLS
       const { error: notifError } = await supabase
