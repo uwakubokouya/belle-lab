@@ -479,11 +479,19 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                               profileMap[p.id] = p;
                           });
                       }
-                      
-                      const reviewsWithProfiles = postedRevs.map((r: any) => ({
-                          ...r,
-                          sns_profiles: profileMap[r.target_cast_id] || { name: '不明なキャスト', avatar_url: null, is_vip: false }
-                      }));
+                      const isAdmin = user && (user.role === 'admin' || (user.role as string) === 'management' || user.role === 'system');
+
+                      const reviewsWithProfiles = postedRevs.map((r: any) => {
+                          const isAuthorized = user && (user.is_vip || isAdmin || user.id === r.reviewer_id);
+                          const isDummy = r.visibility === 'secret' && !isAuthorized;
+
+                          return {
+                              ...r,
+                              content: isDummy ? "VIP限定のプレミアム口コミです。VIP会員になると内容を閲覧できます。" : r.content,
+                              is_dummy: isDummy,
+                              sns_profiles: profileMap[r.target_cast_id] || { name: '不明なキャスト', avatar_url: null, is_vip: false }
+                          };
+                      });
                       
                       setPostedReviews(reviewsWithProfiles.filter((r: any) => r.status !== 'rejected'));
                   } else {
@@ -1857,7 +1865,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                         <Star key={star} size={14} className={star <= review.rating ? "fill-[#B8860B] text-[#B8860B]" : "text-[#E5E5E5]"} />
                                     ))}
                                 </div>
-                                <p className="text-xs text-[#333333] leading-relaxed whitespace-pre-wrap font-light mb-3 break-words w-full text-left">
+                                <p className={`text-xs text-[#333333] leading-relaxed whitespace-pre-wrap font-light mb-3 break-words w-full text-left ${review.is_dummy ? 'select-none blur-[4px] text-[#D4AF37] opacity-80 pointer-events-none' : ''}`}>
                                     {review.content}
                                 </p>
                                 <div className="w-full border-t border-[#E5E5E5] pt-3 flex justify-between items-center text-[10px] text-[#777777] tracking-widest">
