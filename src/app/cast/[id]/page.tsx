@@ -31,7 +31,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [acceptsDms, setAcceptsDms] = useState(true);
   const [resolvedCastId, setResolvedCastId] = useState<string>(id);
-  const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'shifts' | 'reviews' | 'casts' | 'cast_grid'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'shifts' | 'reviews' | 'casts' | 'cast_grid' | 'posted_reviews' | 'following_casts'>('timeline');
   const [weekOffset, setWeekOffset] = useState(0);
   const [weeklyShifts, setWeeklyShifts] = useState<{dateStr: string, displayDate: string, text: string}[]>([]);
   
@@ -51,6 +51,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
 
   const [storeCasts, setStoreCasts] = useState<any[]>([]);
   const [isLoadingCasts, setIsLoadingCasts] = useState(false);
+
+  const [postedReviews, setPostedReviews] = useState<any[]>([]);
+  const [followingCasts, setFollowingCasts] = useState<any[]>([]);
 
   interface ProfileData {
     name: string;
@@ -262,6 +265,11 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
           setAcceptsDms(true);
       }
 
+      if (profile?.role === 'customer') {
+          setActiveTab('posted_reviews');
+      }
+
+
       const actualCastId = profile ? profile.id : id;
       setResolvedCastId(actualCastId); // Keep for handleFollow
 
@@ -444,7 +452,45 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
          }));
       }
 
-      // 5. Fetch Today's Shift Status
+      // 5. Fetch Customer Tab Data (if customer)
+      if (profile?.role === 'customer') {
+          const fetchCustomerData = async () => {
+              // Fetch posted reviews
+              const { data: postedRevs } = await supabase
+                .from('sns_reviews')
+                .select(`
+                  id, rating, score, visited_date, content, created_at, target_cast_id, visibility, status,
+                  sns_profiles!sns_reviews_target_cast_id_fkey(name, avatar_url, is_vip)
+                `)
+                .eq('reviewer_id', actualCastId)
+                .order('created_at', { ascending: false });
+              
+              if (postedRevs) {
+                  // 他のカスタマーからは見えない等の制御を入れる場合（今回は全公開なのでそのまま）
+                  setPostedReviews(postedRevs.filter((r: any) => r.status !== 'rejected'));
+              }
+
+              // Fetch following casts
+              const { data: follows } = await supabase
+                .from('sns_follows')
+                .select(`
+                  following_id,
+                  sns_profiles!sns_follows_following_id_fkey(name, avatar_url, is_vip)
+                `)
+                .eq('follower_id', actualCastId);
+              
+              if (follows) {
+                  setFollowingCasts(follows.map(f => ({
+                      id: f.following_id,
+                      ...f.sns_profiles
+                  })));
+              }
+          };
+          await fetchCustomerData();
+      }
+
+      // 6. Fetch Today's Shift Status
+
       if (storeCast?.id) {
           const now = new Date();
           const businessEndTime = await fetchBusinessEndTime(supabase);
@@ -793,17 +839,24 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // Update local state immediately
       setLikedFollowerIds(prev => new Set(prev).add(followerId));
       
+      // Determine sender name based on context (if viewing own profile, use profileData.name, otherwise fetch from user context)
+      // Since user context might lack name, fallback to a generic message if profile doesn't match
+      const senderName = user?.id === id || user?.id === resolvedCastId 
+          ? (profileData.name || 'キャスト')
+          : (user?.name || user?.user_metadata?.name || 'キャスト');
+
       // Insert LIKE into messages to bypass sns_notifications RLS
       const { error: notifError } = await supabase
         .from('sns_messages')
         .insert({
            sender_id: user?.id,
            receiver_id: followerId,
-           content: `[SYSTEM_LIKE]${profileData.name || 'キャスト'}さんからいいねが届いています！早速チェックしてみて！`,
+           content: `[SYSTEM_LIKE]${senderName}さんからいいねが届いています！早速チェックしてみて！`,
            is_read: false
         });
       if (notifError) console.error("Notification insert error:", notifError);
   };
+
 
   const cast = {
     id: id,
@@ -1363,7 +1416,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs for Casts/Stores */}
       {!isCustomerProfile && (
       <div className="flex w-full border-y border-[#E5E5E5] sticky top-0 bg-white/90 backdrop-blur z-30">
           <button 
@@ -1419,7 +1472,27 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       </div>
       )}
 
-      {/* Tab Content */}
+      {/* Tabs for Customers */}
+      {isCustomerProfile && (
+      <div className="flex w-full border-y border-[#E5E5E5] sticky top-0 bg-white/90 backdrop-blur z-30">
+          <button 
+             onClick={() => setActiveTab('posted_reviews')}
+             className={`flex-1 py-4 text-[11px] tracking-widest border-r border-[#E5E5E5] relative transition-colors ${activeTab === 'posted_reviews' ? 'font-bold text-black bg-[#F9F9F9]' : 'font-normal text-[#777777] hover:bg-[#F9F9F9]'}`}
+          >
+            投稿した口コミ
+            {activeTab === 'posted_reviews' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
+          </button>
+          <button 
+             onClick={() => setActiveTab('following_casts')}
+             className={`flex-1 py-4 text-[11px] tracking-widest relative transition-colors ${activeTab === 'following_casts' ? 'font-bold text-black bg-[#F9F9F9]' : 'font-normal text-[#777777] hover:bg-[#F9F9F9]'}`}
+          >
+            推しキャスト
+            {activeTab === 'following_casts' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
+          </button>
+      </div>
+      )}
+
+      {/* Tab Content for Casts/Stores */}
       {!isCustomerProfile && (
       <div className="pb-12 bg-[#F9F9F9] min-h-[300px]">
         {activeTab === 'timeline' ? (
@@ -1710,12 +1783,109 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       </div>
       )}
 
+      {/* Tab Content for Customers */}
+      {isCustomerProfile && (
+      <div className="pb-12 bg-[#F9F9F9] min-h-[300px]">
+        {activeTab === 'posted_reviews' ? (
+            <div className="bg-[#F9F9F9] px-4 py-6">
+                {postedReviews.length > 0 ? (
+                    <div className="space-y-4">
+                        {postedReviews.map((review) => (
+                            <div key={review.id} className="bg-white p-5 border border-[#E5E5E5] relative flex flex-col items-center text-center">
+                                {review.visibility === 'secret' && (
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-[#D4AF37]" />
+                                )}
+                                <Link href={`/cast/${review.target_cast_id}`} className="mb-3 block">
+                                    <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E5E5E5] mx-auto mb-2">
+                                        {review.sns_profiles?.avatar_url ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img src={review.sns_profiles.avatar_url} alt="Cast" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-[#F9F9F9] flex items-center justify-center">
+                                                <UserPlus size={16} className="text-[#CCC]" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] font-bold tracking-widest text-black">
+                                        TO: {review.sns_profiles?.name || "キャスト"}
+                                    </span>
+                                </Link>
+
+                                <div className="flex gap-1 mb-3">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star key={star} size={14} className={star <= review.rating ? "fill-[#B8860B] text-[#B8860B]" : "text-[#E5E5E5]"} />
+                                    ))}
+                                </div>
+                                <p className="text-xs text-[#333333] leading-relaxed whitespace-pre-wrap font-light mb-3 break-words w-full text-left">
+                                    {review.content}
+                                </p>
+                                <div className="w-full border-t border-[#E5E5E5] pt-3 flex justify-between items-center text-[10px] text-[#777777] tracking-widest">
+                                    <span>{new Date(review.created_at).toLocaleDateString('ja-JP')}</span>
+                                    {review.visibility === 'secret' && (
+                                        <span className="text-[#D4AF37] font-bold flex items-center gap-1">
+                                            <Lock size={10} /> VIP限定
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-[#777777]">
+                        <p className="text-xs tracking-widest">まだ口コミを投稿していません</p>
+                    </div>
+                )}
+            </div>
+        ) : activeTab === 'following_casts' ? (
+            <div className="bg-[#F9F9F9] px-4 py-6">
+                {followingCasts.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {followingCasts.map((c) => (
+                            <Link href={`/cast/${c.id}`} key={c.id} className="block group">
+                                <div className="aspect-square bg-white border border-[#E5E5E5] p-2 relative flex flex-col items-center justify-center hover:border-black transition-colors">
+                                    <div className="w-16 h-16 rounded-full overflow-hidden border border-[#E5E5E5] mb-3 relative">
+                                        {c.avatar_url ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img src={c.avatar_url} alt="Cast" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        ) : (
+                                            <div className="w-full h-full bg-[#F9F9F9] flex items-center justify-center">
+                                                <UserPlus size={20} className="text-[#CCC]" />
+                                            </div>
+                                        )}
+                                        {c.is_vip && (
+                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
+                                                <img src="/images/vip-crown.png" alt="VIP" className="w-4 h-4 object-contain" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] font-bold tracking-widest text-black text-center truncate w-full px-2">
+                                        {c.name || "キャスト"}
+                                    </span>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-[#777777]">
+                        <p className="text-xs tracking-widest">まだ推しキャストがいません</p>
+                    </div>
+                )}
+            </div>
+        ) : null}
+      </div>
+      )}
+
       {/* Fixed Sticky CTA Bottom for Cast Profile */}
       <div className="fixed bottom-[72px] left-0 right-0 max-w-md mx-auto p-4 z-40 bg-white border-t border-[#E5E5E5]">
           {user?.id === id ? (
             <button onClick={() => setIsEditingProfile(true)} className="premium-btn w-full flex items-center justify-center gap-3 py-4 text-sm tracking-widest">
                <UserPlus size={18} className="stroke-[1.5]" />
                プロフィールを設定・編集する
+            </button>
+          ) : isCustomerProfile && (user?.role === 'cast' || user?.role === 'store') ? (
+            <button onClick={() => handleSendLike(resolvedCastId)} disabled={likedFollowerIds.has(resolvedCastId)} className={`premium-btn w-full flex items-center justify-center gap-3 py-4 text-sm tracking-widest ${likedFollowerIds.has(resolvedCastId) ? 'opacity-50 cursor-default border-[#E5E5E5] bg-[#F9F9F9] text-[#777777]' : ''}`}>
+               <Heart size={18} className={`stroke-[1.5] ${likedFollowerIds.has(resolvedCastId) ? 'fill-[#E02424] text-[#E02424]' : ''}`} />
+               {likedFollowerIds.has(resolvedCastId) ? 'いいね送信済み' : 'いいね・足あとを残す'}
             </button>
           ) : !isNonCastProfile ? (
             <Link href={`/reserve/${id}`} className="premium-btn w-full flex items-center justify-center gap-3 py-4 text-sm tracking-widest">
