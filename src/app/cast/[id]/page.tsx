@@ -170,7 +170,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // The URL 'id' could be an sns_profiles ID or a casts ID.
       let { data: profile } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin')
+        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip')
         .eq('id', id)
         .maybeSingle();
 
@@ -184,7 +184,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            // Find linked SNS profile by matching phone to login_id
            const { data: linkedProfile } = await supabase
              .from('sns_profiles')
-             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin')
+             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip')
              .eq('phone', castData.login_id || 'dummy')
              .maybeSingle();
              
@@ -277,12 +277,29 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            .from('sns_reviews')
            .select(`
              id, rating, score, visited_date, content, created_at, reviewer_id, visibility, status,
-             sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url)
+             sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
            `)
            .eq('target_cast_id', castIdToFetch)
            .order('created_at', { ascending: false });
 
-         let finalRevs = (revs || []).filter((r: any) => r.status !== 'rejected');
+         let finalRevs = (revs || []).filter((r: any) => {
+             // 却下されたものは表示しない
+             if (r.status === 'rejected') return false;
+             
+             // 審査中の口コミは、書いた本人にしか見せない
+             if (r.status === 'pending') {
+                 return user && user.id === r.reviewer_id;
+             }
+             
+             // 承認済みのVIP限定口コミ（secret）は、VIPユーザー、運営、または書いた本人にしか見せない
+             if (r.visibility === 'secret') {
+                 const isAdmin = user && (user.role === 'admin' || user.role === 'management' || user.role === 'system');
+                 return user && (user.is_vip || isAdmin || user.id === r.reviewer_id);
+             }
+             
+             // それ以外（承認済みのpublic）は全員に見せる
+             return true;
+         });
 
          // VIPでない場合、秘密の口コミのプレビュー件数を取得してダミーを追加
          if (!user?.is_vip && (!user || !user.is_admin)) {
@@ -301,7 +318,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                          created_at: new Date().toISOString(),
                          visibility: 'secret',
                          is_dummy: true,
-                         sns_profiles: { name: "VIP会員", avatar_url: "/images/no-photo.jpg" }
+                         sns_profiles: { name: "VIP会員", avatar_url: "/images/no-photo.jpg", is_vip: true }
                      } as any);
                  }
              }
@@ -753,7 +770,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            created_at,
            sns_profiles!sns_follows_follower_id_fkey (
                name,
-               avatar_url
+               avatar_url,
+               is_vip
            )
         `)
         .eq('following_id', resolvedCastId)
@@ -1550,7 +1568,12 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                         </div>
                                         <div>
                                             <div className="text-[11px] font-bold tracking-widest flex items-center gap-2">
-                                                {review.sns_profiles?.name || "匿名ユーザー"}
+                                                 <span className="flex items-center gap-1">
+                                                   {review.sns_profiles?.name || "匿名ユーザー"}
+                                                   {review.sns_profiles?.is_vip && (
+                                                      <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />
+                                                   )}
+                                                 </span>
                                                 {review.visibility === 'secret' && (
                                                     <span className="text-[8px] bg-[#D4AF37] text-white px-1.5 py-0.5 font-normal tracking-widest rounded-none">VIP</span>
                                                 )}
@@ -1834,7 +1857,12 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                   </div>
                                   <div className="flex-1 min-w-0">
                                       <div className="font-bold text-sm tracking-widest text-black truncate mb-1">
-                                          {follower.sns_profiles?.name || "名称未設定"}
+                                           <span className="flex items-center gap-1">
+                                             {follower.sns_profiles?.name || "名称未設定"}
+                                             {follower.sns_profiles?.is_vip && (
+                                                <img src="/images/vip-crown.png" alt="VIP" className="h-3.5 object-contain ml-0.5" />
+                                             )}
+                                           </span>
                                       </div>
                                   </div>
                                </div>
@@ -1920,7 +1948,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 .from('sns_reviews')
                 .select(`
                   id, rating, content, created_at, reviewer_id, status,
-                  sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url)
+                  sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
                 `)
                 .eq('target_cast_id', resolvedCastId)
                 .order('created_at', { ascending: false });

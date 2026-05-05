@@ -109,6 +109,7 @@ export default function LoginPage() {
           role: "cast",
           phone: phone, // Actually their login_id
           avatar_url: castMatch.profile_image_url || castMatch.avatar_url || null,
+          store_id: castMatch.store_id || null, // ADDED
         });
 
         if (upsertErr) {
@@ -171,6 +172,7 @@ export default function LoginPage() {
           phone: phone, // Actually their username, used to link with profiles later
           is_admin: true,
           avatar_url: adminMatch.avatar_url || null,
+          store_id: adminMatch.store_id || null, // ADDED
         }, { onConflict: 'id' });
 
         if (upsertErr) {

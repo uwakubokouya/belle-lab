@@ -135,27 +135,40 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     );
 
     // Initial check for unread notifications
-    const checkUnreadNotifications = async () => {
+    const checkUnreadNotifications = async (userId: string) => {
       const { data } = await supabase
         .from('sns_notifications')
-        .select('created_at')
+        .select('id, created_at')
+        .or(`user_id.is.null,user_id.eq.${userId}`)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (data) {
-        const lastRead = localStorage.getItem('last_read_notification_time');
-        if (!lastRead || new Date(data.created_at) > new Date(lastRead)) {
-          setHasUnreadNotifications(true);
+        try {
+            const readIdsRaw = localStorage.getItem('read_notifications');
+            const readIds = readIdsRaw ? JSON.parse(readIdsRaw) : [];
+            if (!readIds.includes(data.id)) {
+                setHasUnreadNotifications(true);
+            }
+        } catch (e) {
+            setHasUnreadNotifications(true);
         }
       }
     };
-    checkUnreadNotifications();
 
     // Listen for new notifications in real-time
     const notificationChannel = supabase.channel('public:sns_notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sns_notifications' }, () => {
-         setHasUnreadNotifications(true);
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sns_notifications' }, (payload) => {
+         // Check if the notification is global or for the current user
+         supabase.auth.getSession().then(({ data: { session } }) => {
+             if (session?.user.id) {
+                 const newRecord = payload.new as any;
+                 if (!newRecord.user_id || newRecord.user_id === session.user.id) {
+                     setHasUnreadNotifications(true);
+                 }
+             }
+         });
       })
       .subscribe();
 
@@ -176,13 +189,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const checkUnreadMessages = async (userId: string) => {
        const { data } = await supabase
           .from('sns_messages')
-          .select('id, content')
+          .select('id, content, is_deleted')
           .eq('receiver_id', userId)
           .eq('is_read', false);
           
        if (data) {
-           const normalMsgs = data.filter(m => !m.content.startsWith('[SYSTEM_LIKE]'));
-           const likeMsgs = data.filter(m => m.content.startsWith('[SYSTEM_LIKE]'));
+           const normalMsgs = data.filter(m => !m.is_deleted && !m.content?.startsWith('[SYSTEM_LIKE]') && !m.content?.startsWith('[SYSTEM_ACCEPT]'));
+           const likeMsgs = data.filter(m => !m.is_deleted && m.content?.startsWith('[SYSTEM_LIKE]'));
            setHasUnreadMessages(normalMsgs.length > 0);
            setHasUnreadLikes(likeMsgs.length > 0);
        } else {
@@ -203,6 +216,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // Load unread initially
     supabase.auth.getSession().then(({ data: { session } }) => {
        if (session?.user.id) {
+           checkUnreadNotifications(session.user.id);
            checkUnreadMessages(session.user.id);
            checkUnreadFootprints(session.user.id);
        }
@@ -359,6 +373,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markNotificationsAsRead = () => {
+    // 互換性のため古いキーも一応残すが、主判定は read_notifications に移行
     localStorage.setItem('last_read_notification_time', new Date().toISOString());
     setHasUnreadNotifications(false);
   };

@@ -17,7 +17,7 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
   const [showMenu, setShowMenu] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [customName, setCustomName] = useState("");
-  const [partnerProfile, setPartnerProfile] = useState<{name: string, avatar_url: string | null, bio?: string, age_group?: string, role?: string} | null>(null);
+  const [partnerProfile, setPartnerProfile] = useState<{name: string, avatar_url: string | null, bio?: string, age_group?: string, role?: string, is_vip?: boolean} | null>(null);
   const [nextShift, setNextShift] = useState<string | null>(null);
   const [unsendCandidate, setUnsendCandidate] = useState<string | null>(null);
 
@@ -74,9 +74,9 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
     if (!isUuid) return;
 
     const fetchPartnerProfile = async () => {
-       const { data } = await supabase.from('sns_profiles').select('name, avatar_url, bio, age_group, phone, role').eq('id', id).single();
+       const { data } = await supabase.from('sns_profiles').select('name, avatar_url, bio, age_group, phone, role, is_vip').eq('id', id).single();
        if (data) {
-          setPartnerProfile({ name: data.name, avatar_url: data.avatar_url, bio: data.bio, age_group: data.age_group, role: data.role });
+          setPartnerProfile({ name: data.name, avatar_url: data.avatar_url, bio: data.bio, age_group: data.age_group, role: data.role, is_vip: data.is_vip });
           if (!customName) {
              const saved = localStorage.getItem(`nickname_${id}`);
              setCustomName(saved || data.name || "名称未設定");
@@ -325,7 +325,12 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
                        autoFocus
                      />
                 ) : (
-                     <span className="font-medium text-sm tracking-widest uppercase">{customName}</span>
+                     <span className="font-medium text-sm tracking-widest uppercase flex items-center gap-1">
+                        {customName}
+                        {partnerProfile?.is_vip && (
+                          <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-1" />
+                        )}
+                     </span>
                 )}
                 {user?.role === 'cast' && !isEditingName && (
                    <button onClick={() => setIsEditingName(true)} className="absolute -right-6 text-[#777777] hover:text-black transition-colors p-1">

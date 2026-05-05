@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { X, Star } from 'lucide-react';
+import { X, Star, Check } from 'lucide-react';
 import { useUser } from '@/providers/UserProvider';
 import { useRouter } from 'next/navigation';
 
@@ -25,10 +25,12 @@ export default function ReviewModal({ isOpen, onClose, targetCastId, castName, o
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       setErrorMsg("口コミを投稿するにはログインが必要です。");
@@ -51,8 +53,13 @@ export default function ReviewModal({ isOpen, onClose, targetCastId, castName, o
       return;
     }
 
-    setIsSubmitting(true);
     setErrorMsg("");
+    setShowConfirm(true);
+  };
+
+  const confirmSubmit = async () => {
+    if (!user) return;
+    setIsSubmitting(true);
 
     const { error } = await supabase
       .from('sns_reviews')
@@ -73,23 +80,67 @@ export default function ReviewModal({ isOpen, onClose, targetCastId, castName, o
       console.error("口コミ投稿エラー:", error);
       setErrorMsg("エラーが発生しました。もう一度お試しください。");
     } else {
-      // ポイント付与 (今回は一律5ptとする。新人判定ロジックが追加された場合はここを条件分岐する)
-      let earnedPoints = 5;
+      // 店舗への通知
       try {
-        await supabase.rpc('add_review_points', { p_user_id: user.id, p_points: earnedPoints });
-      } catch (ptErr) {
-        console.error("ポイント付与エラー:", ptErr);
+        let targetStoreId = null;
+        let storeSnsProfileId = null;
+        
+        // 1. 口コミ対象キャストの所属店舗(store_id)を特定する
+        const { data: profileData } = await supabase.from('sns_profiles').select('store_id').eq('id', targetCastId).maybeSingle();
+        if (profileData?.store_id) {
+            targetStoreId = profileData.store_id;
+        } else {
+            const { data: castData } = await supabase.from('casts').select('store_id').eq('id', targetCastId).maybeSingle();
+            if (castData?.store_id) {
+                targetStoreId = castData.store_id;
+            }
+        }
+
+        // 2. 通知先を決定する
+        let notificationTargetId = null;
+
+        if (visibility === 'secret') {
+            // VIP口コミは運営（admin/system）に通知
+            const { data: adminProfile } = await supabase.from('sns_profiles')
+                .select('id')
+                .in('role', ['admin', 'system'])
+                .is('store_id', null)
+                .limit(1)
+                .maybeSingle();
+                
+            if (adminProfile?.id) {
+                notificationTargetId = adminProfile.id;
+            }
+        } else {
+            // 通常口コミは店舗に通知
+            if (targetStoreId) {
+                const { data: storeProfile } = await supabase.from('sns_profiles')
+                    .select('id')
+                    .eq('store_id', targetStoreId)
+                    .eq('role', 'store')
+                    .maybeSingle();
+                    
+                if (storeProfile?.id) {
+                    notificationTargetId = storeProfile.id;
+                }
+            }
+        }
+
+        // 3. 通知を発行
+        if (notificationTargetId) {
+          await supabase.from('sns_notifications').insert({
+            user_id: notificationTargetId,
+            title: visibility === 'secret' ? 'VIP限定の新しい口コミ' : '新しい口コミ',
+            content: `${castName}さん宛に新しい口コミが投稿されました。審査画面から確認して承認を行ってください。`,
+            type: '重要'
+          });
+        }
+      } catch (notifErr) {
+        console.error("店舗通知エラー:", notifErr);
       }
 
-      alert(visibility === 'secret' 
-        ? `VIP口コミを送信し、${earnedPoints}ポイントを獲得しました！運営の確認後に公開されます。` 
-        : `口コミを送信し、${earnedPoints}ポイントを獲得しました！承認後に公開されます。`);
-      onReviewSubmitted();
-      setContent("");
-      setRating(5);
-      setScore('');
-      setVisitedDate('');
-      onClose();
+      setShowConfirm(false);
+      setShowSuccessModal(true);
     }
   };
 
@@ -116,7 +167,7 @@ export default function ReviewModal({ isOpen, onClose, targetCastId, castName, o
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <form onSubmit={handlePreSubmit} className="flex flex-col gap-6">
             {/* Visibility Toggle */}
             <div className="flex border border-[#E5E5E5] bg-[#FAFAFA] p-1">
               <button
@@ -228,6 +279,103 @@ export default function ReviewModal({ isOpen, onClose, targetCastId, castName, o
           </form>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowConfirm(false)}>
+          <div className="bg-white w-full max-w-sm border border-[#E5E5E5] flex flex-col p-6 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold tracking-widest text-center mb-4">投稿確認</h3>
+            <p className="text-xs text-[#333333] leading-relaxed mb-4 text-center">
+              以下の内容で口コミを投稿してもよろしいですか？<br/>
+              <span className="text-[10px] text-[#777777]">※投稿内容は運営・店舗の確認後に公開されます。</span>
+            </p>
+            
+            <div className="bg-[#F9F9F9] border border-[#E5E5E5] p-4 mb-6 flex flex-col gap-3 text-xs text-[#333333] max-h-[40vh] overflow-y-auto">
+               <div className="flex justify-between items-center border-b border-[#E5E5E5] pb-2">
+                 <span className="text-[10px] text-[#777777] tracking-widest uppercase">公開設定</span>
+                 <span className="font-bold">{visibility === 'secret' ? 'VIP口コミ' : '通常口コミ'}</span>
+               </div>
+               <div className="flex justify-between items-center border-b border-[#E5E5E5] pb-2">
+                 <span className="text-[10px] text-[#777777] tracking-widest uppercase">評価 / 点数</span>
+                 <span className="font-bold flex items-center gap-1">
+                    <span className="flex">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} size={12} className={star <= rating ? (visibility === 'secret' ? 'fill-[#D4AF37] text-[#D4AF37]' : 'fill-black text-black') : 'fill-transparent text-[#E5E5E5]'} />
+                      ))}
+                    </span>
+                    <span className="ml-1">{score}点</span>
+                 </span>
+               </div>
+               <div className="flex justify-between items-center border-b border-[#E5E5E5] pb-2">
+                 <span className="text-[10px] text-[#777777] tracking-widest uppercase">訪問日</span>
+                 <span className="font-bold">{visitedDate}</span>
+               </div>
+               <div className="pt-1">
+                 <span className="text-[10px] text-[#777777] tracking-widest uppercase block mb-2">口コミ内容</span>
+                 <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
+               </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-3 border border-[#E5E5E5] text-xs tracking-widest text-[#777777] hover:bg-[#FAFAFA] transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={confirmSubmit}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-black text-white text-xs tracking-widest hover:bg-[#333333] transition-colors disabled:bg-[#E5E5E5]"
+              >
+                {isSubmitting ? '送信中...' : '投稿する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => {
+          setShowSuccessModal(false);
+          onReviewSubmitted();
+          setContent("");
+          setRating(5);
+          setScore('');
+          setVisitedDate('');
+          onClose();
+        }}>
+          <div className="bg-white w-full max-w-sm border border-[#E5E5E5] flex flex-col p-8 animate-in zoom-in-95 duration-200 items-center text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center mb-4 text-black">
+              <Check size={24} className="stroke-[1.5]" />
+            </div>
+            <h3 className="text-sm font-bold tracking-widest mb-4">送信完了</h3>
+            <p className="text-xs text-[#333333] leading-relaxed mb-6 whitespace-pre-wrap">
+              {visibility === 'secret' 
+                ? 'VIP口コミを送信しました！\n運営・店舗の確認後に公開され、ポイントが付与されます。' 
+                : '口コミを送信しました！\n承認後に公開され、ポイントが付与されます。'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                onReviewSubmitted();
+                setContent("");
+                setRating(5);
+                setScore('');
+                setVisitedDate('');
+                onClose();
+              }}
+              className="w-full py-3 bg-black text-white text-xs tracking-widest hover:bg-[#333333] transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

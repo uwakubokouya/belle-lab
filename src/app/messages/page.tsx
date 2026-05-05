@@ -13,6 +13,7 @@ interface Conversation {
   lastMessage: string;
   lastMessageAt: string;
   isUnread: boolean;
+  isVip?: boolean;
 }
 
 export default function MessagesIndexPage() {
@@ -40,7 +41,8 @@ export default function MessagesIndexPage() {
           receiver_id,
           content,
           created_at,
-          is_read
+          is_read,
+          is_deleted
         `)
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
@@ -55,28 +57,33 @@ export default function MessagesIndexPage() {
       const partnerIds = new Set<string>();
 
       for (const msg of messages) {
+        if (msg.is_deleted) continue;
+
         const partnerId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
         partnerIds.add(partnerId);
 
-        // We only want to set the map entry if we haven't found a REAL message yet.
         const isSystemMsg = msg.content?.startsWith('[SYSTEM_LIKE]') || msg.content?.startsWith('[SYSTEM_ACCEPT]');
+        const isMsgUnread = msg.receiver_id === user.id && !msg.is_read && !isSystemMsg;
         
         if (!map.has(partnerId)) {
-           // Temporarily set it with pure system state in case there are no real messages
            map.set(partnerId, {
              partnerId,
              lastMessage: "✨ マッチングしました！",
              lastMessageAt: msg.created_at,
-             isUnread: msg.receiver_id === user.id && !msg.is_read && !isSystemMsg,
+             isUnread: isMsgUnread,
              hasRealMessage: false
            });
+        } else {
+           // If we already have the map entry, but this older message is unread, mark the conversation as unread
+           if (isMsgUnread) {
+               map.get(partnerId).isUnread = true;
+           }
         }
         
-        // If this is a real message and we haven't locked in a real message yet
         const currentEntry = map.get(partnerId);
         if (!isSystemMsg && !currentEntry.hasRealMessage) {
            currentEntry.lastMessage = msg.content || "画像を送信しました";
-           currentEntry.lastMessageAt = msg.created_at; // use the time of the real message? Or the latest? Keep latest time.
+           currentEntry.lastMessageAt = msg.created_at; 
            currentEntry.hasRealMessage = true;
         }
       }
@@ -90,7 +97,7 @@ export default function MessagesIndexPage() {
       // Fetch partner profiles
       const { data: profiles, error: profileErr } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url')
+        .select('id, name, avatar_url, is_vip')
         .in('id', Array.from(partnerIds));
 
       if (!profileErr && profiles) {
@@ -104,7 +111,8 @@ export default function MessagesIndexPage() {
           finalConversations.push({
             ...convo,
             partnerName: profile?.name || "名称未設定",
-            partnerAvatar: profile?.avatar_url || "/images/no-photo.jpg"
+            partnerAvatar: profile?.avatar_url || "/images/no-photo.jpg",
+            isVip: profile?.is_vip || false
           });
         }
         
@@ -226,8 +234,11 @@ export default function MessagesIndexPage() {
                   
                   <div className="flex-1 min-w-0 pr-12">
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`font-bold text-sm tracking-widest truncate ${convo.isUnread ? 'text-black' : 'text-[#333]'}`}>
+                      <span className={`font-bold text-sm tracking-widest truncate flex items-center gap-1 ${convo.isUnread ? 'text-black' : 'text-[#333]'}`}>
                         {convo.partnerName}
+                        {convo.isVip && (
+                          <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-1" />
+                        )}
                       </span>
                     </div>
                     <div className={`text-[11px] truncate tracking-widest ${convo.isUnread ? 'text-black font-medium' : 'text-[#777777]'}`}>

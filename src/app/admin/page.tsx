@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
             </div>
           </Link>
 
-          <Link href="/admin/reviews" className="group border border-[#333] bg-[#111] p-6 hover:border-white transition-all duration-300 relative overflow-hidden">
+          <Link href="/mypage/reviews" className="group border border-[#333] bg-[#111] p-6 hover:border-white transition-all duration-300 relative overflow-hidden">
             <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]" />
             <div className="relative z-10 flex items-center justify-between group-hover:text-black transition-colors duration-300">
               <div className="flex items-center gap-4">

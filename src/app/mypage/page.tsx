@@ -127,16 +127,28 @@ export default function MyPage() {
           )}
           
           {user?.role === 'store' && (
-            <Link href="/admin/analytics" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors">
-              <BarChart3 size={18} className="stroke-[1.5]" />
-              店舗アクセス解析
-            </Link>
+            <>
+              <Link href="/admin/analytics" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors mb-4">
+                <BarChart3 size={18} className="stroke-[1.5]" />
+                店舗アクセス解析
+              </Link>
+              <Link href="/mypage/reviews" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors">
+                <Check size={18} className="stroke-[1.5]" />
+                口コミ審査
+              </Link>
+            </>
           )}
           {user?.is_admin && user?.role !== 'store' && (
-            <Link href="/admin/announcement" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors">
-              <Bell size={18} className="stroke-[1.5]" />
-              全店舗・ユーザー向けのお知らせ配信
-            </Link>
+            <>
+              <Link href="/admin/announcement" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors mb-4">
+                <Bell size={18} className="stroke-[1.5]" />
+                全店舗・ユーザー向けのお知らせ配信
+              </Link>
+              <Link href="/mypage/reviews" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors">
+                <Check size={18} className="stroke-[1.5]" />
+                VIP口コミ審査
+              </Link>
+            </>
           )}
         </div>
 
@@ -159,7 +171,7 @@ export default function MyPage() {
               <ChevronRight size={16} className="text-[#777777]" />
             </Link>
           )}
-          {user?.role !== 'cast' && user?.role !== 'store' && (
+          {user?.role !== 'cast' && (
             <Link href="/mypage/notifications" className="w-full px-6 py-4 flex items-center justify-between border-b border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors">
               <div className="flex items-center gap-3 relative">
                 <div className="relative">

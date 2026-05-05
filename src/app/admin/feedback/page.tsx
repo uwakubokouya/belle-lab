@@ -14,6 +14,7 @@ interface Feedback {
   status: 'unread' | 'read' | 'resolved';
   created_at: string;
   user_id: string | null;
+  isVip?: boolean;
 }
 
 export default function AdminFeedbackPage() {
@@ -52,7 +53,21 @@ export default function AdminFeedbackPage() {
 
     const { data, error } = await query;
     if (!error && data) {
-      setFeedbacks(data as Feedback[]);
+      const fbData = data as Feedback[];
+      const userIds = fbData.map(f => f.user_id).filter(id => id);
+      
+      if (userIds.length > 0) {
+          const { data: profiles } = await supabase.from('sns_profiles').select('id, is_vip').in('id', userIds);
+          if (profiles) {
+              const profileMap = new Map(profiles.map(p => [p.id, p]));
+              fbData.forEach(f => {
+                  if (f.user_id) {
+                      f.isVip = profileMap.get(f.user_id)?.is_vip || false;
+                  }
+              });
+          }
+      }
+      setFeedbacks(fbData);
     }
     setIsLoading(false);
   };
@@ -173,7 +188,12 @@ export default function AdminFeedbackPage() {
                          className={`hover:text-[#777] transition-colors ${fb.user_id ? 'cursor-pointer underline decoration-[#CCC] underline-offset-4' : 'cursor-default'}`}
                          disabled={!fb.user_id}
                        >
-                         {fb.name || "名無し"}
+                         <span className="flex items-center gap-1">
+                           {fb.name || "名無し"}
+                           {fb.isVip && (
+                             <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />
+                           )}
+                         </span>
                        </button>
                       {fb.status === 'unread' && <span className="bg-black text-white text-[9px] px-1.5 py-0.5 rounded-none">NEW</span>}
                     </h3>

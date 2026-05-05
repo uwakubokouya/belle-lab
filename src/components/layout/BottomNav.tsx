@@ -95,7 +95,7 @@ export default function BottomNav() {
       <Link href="/mypage" className="flex flex-col items-center gap-1 hover:text-black transition-colors relative">
         <div className="relative">
           <Menu size={20} className="stroke-2" />
-          {(hasUnreadNotifications || hasUnreadFootprints) && (
+          {(hasUnreadNotifications || (role === 'cast' && hasUnreadFootprints)) && (
             <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
               <Bell size={12} className="text-[#E02424] fill-[#E02424] animate-ring origin-top" />
             </div>

@@ -31,7 +31,8 @@ export default function FootprintsPage() {
           viewer_id,
           sns_profiles!sns_footprints_viewer_id_fkey (
             name,
-            avatar_url
+            avatar_url,
+            is_vip
           )
         `)
         .eq('cast_id', snsProfileId)
@@ -130,8 +131,11 @@ export default function FootprintsPage() {
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <Link href={`/messages/${item.viewer_id}`} className="font-bold text-sm tracking-widest truncate text-black hover:opacity-70 transition-opacity">
+                    <Link href={`/messages/${item.viewer_id}`} className="font-bold text-sm tracking-widest truncate text-black hover:opacity-70 transition-opacity flex items-center gap-1">
                       {item.sns_profiles?.name || "名称未設定"}
+                      {item.sns_profiles?.is_vip && (
+                         <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />
+                      )}
                     </Link>
                   </div>
                   <div className="flex items-center gap-1 text-[10px] text-[#777777] tracking-widest">

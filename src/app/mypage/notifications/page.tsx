@@ -59,9 +59,15 @@ export default function NotificationsPage() {
         }
 
         const fetchNotifications = async () => {
+            if (!user) {
+                setIsLoading(false);
+                return;
+            }
+            
             const { data } = await supabase
                 .from('sns_notifications')
                 .select('*')
+                .or(`user_id.is.null,user_id.eq.${user.id}`)
                 .order('created_at', { ascending: false });
 
             if (data) {
@@ -71,7 +77,7 @@ export default function NotificationsPage() {
         };
 
         fetchNotifications();
-    }, [markNotificationsAsRead]);
+    }, [markNotificationsAsRead, user]);
 
     const handleTap = (note: any) => {
         setSelectedNote(note);
