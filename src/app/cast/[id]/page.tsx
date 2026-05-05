@@ -2,7 +2,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import PostCard from "@/components/feed/PostCard";
-import { ChevronLeft, MessageCircle, Calendar, Lock, ArrowRight, UserPlus, ArrowLeft, AlertTriangle, CheckSquare, Square, Camera, X, ChevronRight, Heart, Check, Sparkles, Star, Phone } from "lucide-react";
+import { ChevronLeft, MessageCircle, Calendar, Lock, ArrowRight, UserPlus, ArrowLeft, AlertTriangle, CheckSquare, Square, Camera, X, ChevronRight, Heart, Check, Sparkles, Star, Phone, EyeOff } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/providers/UserProvider';
 import { useState, useEffect } from "react";
