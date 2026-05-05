@@ -1846,14 +1846,12 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                 )}
                                 <Link href={`/cast/${review.target_cast_id}`} className="mb-3 block">
                                     <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E5E5E5] mx-auto mb-2">
-                                        {review.sns_profiles?.avatar_url ? (
-                                            /* eslint-disable-next-line @next/next/no-img-element */
-                                            <img src={review.sns_profiles.avatar_url} alt="Cast" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full bg-[#F9F9F9] flex items-center justify-center">
-                                                <UserPlus size={16} className="text-[#CCC]" />
-                                            </div>
-                                        )}
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img 
+                                            src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                            alt={review.sns_profiles?.name || "Cast"} 
+                                            className="w-full h-full object-cover" 
+                                        />
                                     </div>
                                     <span className="text-[10px] font-bold tracking-widest text-black">
                                         TO: {review.sns_profiles?.name || "キャスト"}
@@ -1888,26 +1886,25 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         ) : activeTab === 'following_casts' ? (
             <div className="bg-[#F9F9F9] px-4 py-6">
                 {followingCasts.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-2">
                         {followingCasts.map((c) => (
                             <Link href={`/cast/${c.id}`} key={c.id} className="block group">
                                 <div className="aspect-square bg-white border border-[#E5E5E5] p-2 relative flex flex-col items-center justify-center hover:border-black transition-colors">
-                                    <div className="w-16 h-16 rounded-full overflow-hidden border border-[#E5E5E5] mb-3 relative">
-                                        {c.avatar_url ? (
-                                            /* eslint-disable-next-line @next/next/no-img-element */
-                                            <img src={c.avatar_url} alt="Cast" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                        ) : (
-                                            <div className="w-full h-full bg-[#F9F9F9] flex items-center justify-center">
-                                                <UserPlus size={20} className="text-[#CCC]" />
-                                            </div>
-                                        )}
+                                    <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E5E5E5] mb-2 relative">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img 
+                                            src={c.avatar_url || "/images/no-photo.jpg"} 
+                                            alt={c.name || "Cast"} 
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                        />
                                         {c.is_vip && (
                                             <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
-                                                <img src="/images/vip-crown.png" alt="VIP" className="w-4 h-4 object-contain" />
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src="/images/vip-crown.png" alt="VIP" className="w-3 h-3 object-contain" />
                                             </div>
                                         )}
                                     </div>
-                                    <span className="text-[10px] font-bold tracking-widest text-black text-center truncate w-full px-2">
+                                    <span className="text-[9px] font-bold tracking-widest text-black text-center truncate w-full px-1">
                                         {c.name || "キャスト"}
                                     </span>
                                 </div>
