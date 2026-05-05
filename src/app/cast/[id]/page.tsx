@@ -1414,11 +1414,11 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 {cast.bio || ""}
             </p>
 
-            {isCustomerProfile && (
+            {isCustomerProfile && user && (user.id === resolvedCastId || ['cast', 'store', 'admin', 'management', 'system'].includes(user.role as string)) && (
                 <div className="mt-6 pt-4 border-t border-[#E5E5E5]">
                     <h3 className="text-[10px] font-bold tracking-widest text-black uppercase mb-3 flex items-center gap-1.5">
                         <Sparkles size={12} className="text-[#D4AF37]" />
-                        接客の好み・ステータス
+                        接客の好み
                     </h3>
                     {castPreferences && ['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].some(cat => castPreferences[cat] && castPreferences[cat].length > 0) ? (
                         <div className="flex flex-wrap gap-1.5">
