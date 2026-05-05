@@ -1840,33 +1840,41 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 {postedReviews.length > 0 ? (
                     <div className="space-y-4">
                         {postedReviews.map((review) => (
-                            <div key={review.id} className="bg-white p-5 border border-[#E5E5E5] relative flex flex-col items-center text-center">
+                            <div key={review.id} className="bg-white p-4 border border-[#E5E5E5] relative flex flex-col text-left">
                                 {review.visibility === 'secret' && (
                                     <div className="absolute top-0 left-0 w-full h-1 bg-[#D4AF37]" />
                                 )}
-                                <Link href={`/cast/${review.target_cast_id}`} className="mb-3 block">
-                                    <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E5E5E5] mx-auto mb-2">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img 
-                                            src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
-                                            alt={review.sns_profiles?.name || "Cast"} 
-                                            className="w-full h-full object-cover" 
-                                        />
+                                
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Link href={`/cast/${review.target_cast_id}`} className="shrink-0 hover:opacity-80 transition-opacity block">
+                                        <div className="w-10 h-10 rounded-full overflow-hidden border border-[#E5E5E5]">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img 
+                                                src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                                alt={review.sns_profiles?.name || "Cast"} 
+                                                className="w-full h-full object-cover" 
+                                            />
+                                        </div>
+                                    </Link>
+                                    <div>
+                                        <Link href={`/cast/${review.target_cast_id}`} className="hover:opacity-80 transition-opacity block mb-1">
+                                            <span className="text-[11px] font-bold tracking-widest text-black flex items-center">
+                                                TO: {review.sns_profiles?.name || "キャスト"}
+                                            </span>
+                                        </Link>
+                                        <div className="flex gap-0.5">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <Star key={star} size={10} className={star <= review.rating ? "fill-[#B8860B] text-[#B8860B]" : "text-[#E5E5E5]"} />
+                                            ))}
+                                        </div>
                                     </div>
-                                    <span className="text-[10px] font-bold tracking-widest text-black">
-                                        TO: {review.sns_profiles?.name || "キャスト"}
-                                    </span>
-                                </Link>
-
-                                <div className="flex gap-1 mb-3">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Star key={star} size={14} className={star <= review.rating ? "fill-[#B8860B] text-[#B8860B]" : "text-[#E5E5E5]"} />
-                                    ))}
                                 </div>
-                                <p className={`text-xs text-[#333333] leading-relaxed whitespace-pre-wrap font-light mb-3 break-words w-full text-left ${review.is_dummy ? 'select-none blur-[4px] text-[#D4AF37] opacity-80 pointer-events-none' : ''}`}>
+
+                                <p className={`text-[11px] text-[#333333] leading-relaxed whitespace-pre-wrap font-light mb-3 break-words w-full ${review.is_dummy ? 'select-none blur-[4px] text-[#D4AF37] opacity-80 pointer-events-none' : ''}`}>
                                     {review.content}
                                 </p>
-                                <div className="w-full border-t border-[#E5E5E5] pt-3 flex justify-between items-center text-[10px] text-[#777777] tracking-widest">
+                                
+                                <div className="w-full flex justify-between items-center text-[9px] text-[#777777] tracking-widest">
                                     <span>{new Date(review.created_at).toLocaleDateString('ja-JP')}</span>
                                     {review.visibility === 'secret' && (
                                         <span className="text-[#D4AF37] font-bold flex items-center gap-1">
