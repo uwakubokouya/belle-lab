@@ -116,6 +116,7 @@ export default function MypageReviewsPage() {
 
   const handleUpdateStatus = async (reviewId: string, newStatus: 'approved' | 'rejected') => {
     try {
+      if (!user) return;
       const targetReview = reviews.find(r => r.id === reviewId);
       if (!targetReview) return;
 
