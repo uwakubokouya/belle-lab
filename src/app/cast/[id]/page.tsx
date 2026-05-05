@@ -175,7 +175,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // The URL 'id' could be an sns_profiles ID or a casts ID.
       let { data: profile } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
+        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, hide_reviews_and_favorites')
         .eq('id', id)
         .maybeSingle();
 
@@ -189,7 +189,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            // Find linked SNS profile by matching phone to login_id
            const { data: linkedProfile } = await supabase
              .from('sns_profiles')
-             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
+             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, hide_reviews_and_favorites')
              .eq('phone', castData.login_id || 'dummy')
              .maybeSingle();
              
@@ -256,7 +256,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         phone: profile?.phone || storeCast?.login_id,
         contactPhone,
         is_vip: profile?.is_vip || false,
-        rank: profile?.rank || 'Standard'
+        rank: profile?.rank || 'Standard',
+        hide_reviews_and_favorites: profile?.hide_reviews_and_favorites || false
       }));
 
       if (profile && profile.accepts_dms === false) {
@@ -1528,7 +1529,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Tabs for Customers */}
-      {isCustomerProfile && (
+      {isCustomerProfile && !(profileData.hide_reviews_and_favorites && user?.id !== resolvedCastId) && (
       <div className="flex w-full border-y border-[#E5E5E5] sticky top-0 bg-white/90 backdrop-blur z-30">
           <button 
              onClick={() => setActiveTab('posted_reviews')}
@@ -1545,6 +1546,15 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
             {activeTab === 'following_casts' && <div className="absolute top-0 w-full h-[1px] bg-black"></div>}
           </button>
       </div>
+      )}
+
+      {isCustomerProfile && profileData.hide_reviews_and_favorites && user?.id !== resolvedCastId && (
+          <div className="pb-12 bg-[#F9F9F9] min-h-[300px] flex flex-col items-center pt-20 px-4 text-center">
+              <EyeOff size={32} className="mb-4 text-[#CCCCCC] stroke-[1.5]" />
+              <p className="text-xs text-[#777777] tracking-widest leading-relaxed">
+                  このユーザーは口コミと推しキャストを公開していません
+              </p>
+          </div>
       )}
 
       {/* Tab Content for Casts/Stores */}
@@ -1839,7 +1849,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Tab Content for Customers */}
-      {isCustomerProfile && (
+      {isCustomerProfile && !(profileData.hide_reviews_and_favorites && user?.id !== resolvedCastId) && (
       <div className="pb-12 bg-[#F9F9F9] min-h-[300px]">
         {activeTab === 'posted_reviews' ? (
             <div className="bg-[#F9F9F9] px-4 py-6">

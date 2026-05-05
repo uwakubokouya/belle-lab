@@ -12,6 +12,7 @@ export default function SystemSettingsPage() {
   const [isFetching, setIsFetching] = useState(true);
 
   // Toggle States
+  const [hideReviewsAndFavorites, setHideReviewsAndFavorites] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [imageBlurEnabled, setImageBlurEnabled] = useState(false);
   const [favoriteCastAlerts, setFavoriteCastAlerts] = useState(true);
@@ -35,7 +36,8 @@ export default function SystemSettingsPage() {
           favorite_cast_alerts,
           leave_footprints,
           reservation_reminders,
-          app_lock_enabled
+          app_lock_enabled,
+          hide_reviews_and_favorites
         `)
         .eq('id', user.id)
         .single();
@@ -47,6 +49,7 @@ export default function SystemSettingsPage() {
         setLeaveFootprints(data.leave_footprints ?? true);
         setReservationReminders(data.reservation_reminders ?? true);
         setAppLockEnabled(data.app_lock_enabled ?? false);
+        setHideReviewsAndFavorites(data.hide_reviews_and_favorites ?? false);
       }
 
       if (user.role === 'system') {
@@ -74,6 +77,7 @@ export default function SystemSettingsPage() {
       case 'leave_footprints': setLeaveFootprints(value); break;
       case 'reservation_reminders': setReservationReminders(value); break;
       case 'app_lock_enabled': setAppLockEnabled(value); break;
+      case 'hide_reviews_and_favorites': setHideReviewsAndFavorites(value); break;
     }
 
     // 裏側でデータベースに送信
@@ -177,6 +181,12 @@ export default function SystemSettingsPage() {
                 desc="プライバシー保護のため、アプリを開くたびにご登録の電話番号を要求します。"
                 enabled={appLockEnabled} 
                 onChange={(val) => updateSetting('app_lock_enabled', val)} 
+            />
+            <ToggleRow 
+                label="口コミ・推しキャストを隠す" 
+                desc="ご自身のプロフィール上で、投稿した口コミと推しキャストを非公開にします。"
+                enabled={hideReviewsAndFavorites} 
+                onChange={(val) => updateSetting('hide_reviews_and_favorites', val)} 
             />
         </div>
 

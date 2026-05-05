@@ -411,6 +411,15 @@ export default function AccountSettingsPage() {
               
               <button 
                   type="button"
+                  onClick={() => router.push(`/cast/${user.id}`)}
+                  className="w-full bg-white border border-[#E5E5E5] text-black hover:border-black py-4 flex items-center justify-center gap-2 tracking-widest text-xs transition-colors"
+              >
+                  <UserIcon size={14} className="stroke-[1.5]" />
+                  自分のプロフィールを確認する
+              </button>
+
+              <button 
+                  type="button"
                   onClick={() => setIsPrefModalOpen(true)}
                   className="w-full bg-[#f9f9f9] border border-[#E5E5E5] text-black hover:border-black py-4 flex items-center justify-center gap-2 tracking-widest text-xs transition-colors"
               >

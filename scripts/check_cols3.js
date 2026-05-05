@@ -10,8 +10,9 @@ for(const line of lines) {
     }
 }
 const s = createClient(env['NEXT_PUBLIC_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY'] || env['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
+
 async function run() {
-  const { data, error } = await s.rpc('exec_sql', { sql_query: "SELECT * FROM pg_policies WHERE tablename = 'sns_notifications';" });
-  console.log("Exec SQL Result:", data, "Error:", error);
+  const { data: revs } = await s.from('sns_profiles').select('*').limit(1);
+  console.log("sns_profiles cols:", revs && revs[0] ? Object.keys(revs[0]) : "No data");
 }
 run();

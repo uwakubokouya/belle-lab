@@ -9,9 +9,9 @@ for(const line of lines) {
         env[a.trim()] = b.join('=').trim().replace(/["']/g, '');
     }
 }
-const s = createClient(env['NEXT_PUBLIC_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY'] || env['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
+const s = createClient(env['NEXT_PUBLIC_SUPABASE_URL'], env['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
 async function run() {
-  const { data, error } = await s.rpc('exec_sql', { sql_query: "SELECT * FROM pg_policies WHERE tablename = 'sns_notifications';" });
-  console.log("Exec SQL Result:", data, "Error:", error);
+  const { data, error } = await s.from('sns_profiles').select('store_id').limit(1);
+  console.log("Error:", error);
 }
 run();
