@@ -1414,21 +1414,27 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 {cast.bio || ""}
             </p>
 
-            {isCustomerProfile && castPreferences && (
+            {isCustomerProfile && (
                 <div className="mt-6 pt-4 border-t border-[#E5E5E5]">
                     <h3 className="text-[10px] font-bold tracking-widest text-black uppercase mb-3 flex items-center gap-1.5">
                         <Sparkles size={12} className="text-[#D4AF37]" />
                         接客の好み・ステータス
                     </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                        {['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].map(cat => (
-                            castPreferences[cat] && castPreferences[cat].map((tag: string, i: number) => (
-                                <span key={`${cat}-${i}`} className="text-[10px] bg-[#F9F9F9] border border-[#E5E5E5] px-2 py-1 text-[#333333] tracking-widest">
-                                    {tag}
-                                </span>
-                            ))
-                        ))}
-                    </div>
+                    {castPreferences && ['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].some(cat => castPreferences[cat] && castPreferences[cat].length > 0) ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {['personalities', 'features', 'body_types', 'sm_types', 'plays', 'op_options'].map(cat => (
+                                castPreferences[cat] && castPreferences[cat].map((tag: string, i: number) => (
+                                    <span key={`${cat}-${i}`} className="text-[10px] bg-[#F9F9F9] border border-[#E5E5E5] px-2 py-1 text-[#333333] tracking-widest">
+                                        {tag}
+                                    </span>
+                                ))
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-[10px] text-[#777777] tracking-widest bg-[#F9F9F9] p-3 border border-[#E5E5E5] flex items-center justify-center">
+                            まだ好みのステータスが登録されていません
+                        </div>
+                    )}
                 </div>
             )}
         </div>
