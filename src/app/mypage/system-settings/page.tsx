@@ -36,8 +36,7 @@ export default function SystemSettingsPage() {
           favorite_cast_alerts,
           leave_footprints,
           reservation_reminders,
-          app_lock_enabled,
-          hide_reviews_and_favorites
+          app_lock_enabled
         `)
         .eq('id', user.id)
         .single();
@@ -49,7 +48,6 @@ export default function SystemSettingsPage() {
         setLeaveFootprints(data.leave_footprints ?? true);
         setReservationReminders(data.reservation_reminders ?? true);
         setAppLockEnabled(data.app_lock_enabled ?? false);
-        setHideReviewsAndFavorites(data.hide_reviews_and_favorites ?? false);
       }
 
       if (user.role === 'system') {
@@ -77,7 +75,6 @@ export default function SystemSettingsPage() {
       case 'leave_footprints': setLeaveFootprints(value); break;
       case 'reservation_reminders': setReservationReminders(value); break;
       case 'app_lock_enabled': setAppLockEnabled(value); break;
-      case 'hide_reviews_and_favorites': setHideReviewsAndFavorites(value); break;
     }
 
     // 裏側でデータベースに送信

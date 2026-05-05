@@ -175,7 +175,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // The URL 'id' could be an sns_profiles ID or a casts ID.
       let { data: profile } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, hide_reviews_and_favorites')
+        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
         .eq('id', id)
         .maybeSingle();
 
@@ -189,7 +189,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            // Find linked SNS profile by matching phone to login_id
            const { data: linkedProfile } = await supabase
              .from('sns_profiles')
-             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, hide_reviews_and_favorites')
+             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
              .eq('phone', castData.login_id || 'dummy')
              .maybeSingle();
              
@@ -256,8 +256,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         phone: profile?.phone || storeCast?.login_id,
         contactPhone,
         is_vip: profile?.is_vip || false,
-        rank: profile?.rank || 'Standard',
-        hide_reviews_and_favorites: profile?.hide_reviews_and_favorites || false
+        rank: profile?.rank || 'Standard'
       }));
 
       if (profile && profile.accepts_dms === false) {
