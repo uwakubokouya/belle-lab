@@ -1215,6 +1215,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                         <Phone size={18} className="stroke-[1.5]" />
                     </button>
                 )}
+                {!isCustomerProfile && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleMessage(); }} 
                   className={`p-2 rounded-none border transition-colors flex items-center justify-center ${
@@ -1225,6 +1226,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 >
                     <MessageCircle size={18} className="stroke-[1.5]" />
                 </button>
+                )}
             </div>
         </div>
       </div>
