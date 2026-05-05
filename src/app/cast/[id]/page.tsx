@@ -293,7 +293,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
              
              // 承認済みのVIP限定口コミ（secret）は、VIPユーザー、運営、または書いた本人にしか見せない
              if (r.visibility === 'secret') {
-                 const isAdmin = user && (user.role === 'admin' || user.role === 'management' || user.role === 'system');
+                 const isAdmin = user && (user.role === 'admin' || (user.role as string) === 'management' || user.role === 'system');
                  return user && (user.is_vip || isAdmin || user.id === r.reviewer_id);
              }
              
