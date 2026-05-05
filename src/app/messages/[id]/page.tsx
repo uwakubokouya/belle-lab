@@ -325,12 +325,12 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
                        autoFocus
                      />
                 ) : (
-                     <span className="font-medium text-sm tracking-widest uppercase flex items-center gap-1">
+                     <Link href={`/cast/${id}`} className="font-medium text-sm tracking-widest uppercase flex items-center gap-1 hover:opacity-70 transition-opacity">
                         {customName}
                         {partnerProfile?.is_vip && (
                           <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-1" />
                         )}
-                     </span>
+                     </Link>
                 )}
                 {user?.role === 'cast' && !isEditingName && (
                    <button onClick={() => setIsEditingName(true)} className="absolute -right-6 text-[#777777] hover:text-black transition-colors p-1">
@@ -423,13 +423,13 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
           return (
             <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
               {!isMe && (
-                <div className="w-8 h-8 bg-white border border-[#E5E5E5] shrink-0 mr-3 flex items-center justify-center overflow-hidden">
+                <Link href={`/cast/${id}`} className="w-8 h-8 bg-white border border-[#E5E5E5] shrink-0 mr-3 flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity">
                     <img 
                       src={partnerProfile?.avatar_url || "/images/no-photo.jpg"} 
                       alt="Profile" 
                       className="w-full h-full object-cover" 
                     />
-                </div>
+                </Link>
               )}
               
               <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[75%]`}>

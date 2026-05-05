@@ -1559,21 +1559,40 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                 )}
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#F9F9F9] border border-[#E5E5E5]">
-                                            <img 
-                                                src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
-                                                alt="User" 
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
+                                        {review.reviewer_id ? (
+                                            <Link href={`/cast/${review.reviewer_id}`} className="w-8 h-8 rounded-full overflow-hidden bg-[#F9F9F9] border border-[#E5E5E5] hover:opacity-80 transition-opacity block">
+                                                <img 
+                                                    src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                                    alt="User" 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </Link>
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-[#F9F9F9] border border-[#E5E5E5]">
+                                                <img 
+                                                    src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                                    alt="User" 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        )}
                                         <div>
                                             <div className="text-[11px] font-bold tracking-widest flex items-center gap-2">
-                                                 <span className="flex items-center gap-1">
-                                                   {review.sns_profiles?.name || "匿名ユーザー"}
-                                                   {review.sns_profiles?.is_vip && (
-                                                      <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />
-                                                   )}
-                                                 </span>
+                                                 {review.reviewer_id ? (
+                                                    <Link href={`/cast/${review.reviewer_id}`} className="flex items-center gap-1 hover:underline">
+                                                      {review.sns_profiles?.name || "匿名ユーザー"}
+                                                      {review.sns_profiles?.is_vip && (
+                                                         <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />
+                                                      )}
+                                                    </Link>
+                                                 ) : (
+                                                    <span className="flex items-center gap-1">
+                                                      {review.sns_profiles?.name || "匿名ユーザー"}
+                                                      {review.sns_profiles?.is_vip && (
+                                                         <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />
+                                                      )}
+                                                    </span>
+                                                 )}
                                                 {review.visibility === 'secret' && (
                                                     <span className="text-[8px] bg-[#D4AF37] text-white px-1.5 py-0.5 font-normal tracking-widest rounded-none">VIP</span>
                                                 )}

@@ -119,7 +119,7 @@ export default function FootprintsPage() {
           <div className="space-y-[1px] bg-[#E5E5E5]">
             {footprints.map((item) => (
               <div key={item.id} className="bg-white p-4 flex items-center gap-4">
-                <Link href={`/messages/${item.viewer_id}`} className="shrink-0">
+                <Link href={`/cast/${item.viewer_id}`} className="shrink-0 hover:opacity-80 transition-opacity">
                   <div className="w-12 h-12 bg-[#F9F9F9] border border-[#E5E5E5] overflow-hidden">
                     <img 
                       src={item.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
@@ -131,7 +131,7 @@ export default function FootprintsPage() {
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <Link href={`/messages/${item.viewer_id}`} className="font-bold text-sm tracking-widest truncate text-black hover:opacity-70 transition-opacity flex items-center gap-1">
+                    <Link href={`/cast/${item.viewer_id}`} className="font-bold text-sm tracking-widest truncate text-black hover:opacity-70 transition-opacity flex items-center gap-1">
                       {item.sns_profiles?.name || "名称未設定"}
                       {item.sns_profiles?.is_vip && (
                          <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />

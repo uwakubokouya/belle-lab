@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Check, X, Star, Lock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/providers/UserProvider";
+import Link from 'next/link';
 
 export default function MypageReviewsPage() {
   const router = useRouter();
@@ -207,18 +208,37 @@ export default function MypageReviewsPage() {
                         対象: <span className="text-black font-bold">{review.casts?.name || "不明"}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
-                          alt="User" 
-                          className="w-8 h-8 border border-[#E5E5E5] object-cover p-0.5"
-                        />
+                        {review.reviewer_id ? (
+                            <Link href={`/cast/${review.reviewer_id}`} className="shrink-0 hover:opacity-80 transition-opacity block">
+                                <img 
+                                  src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                  alt="User" 
+                                  className="w-8 h-8 border border-[#E5E5E5] object-cover p-0.5"
+                                />
+                            </Link>
+                        ) : (
+                            <img 
+                              src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                              alt="User" 
+                              className="w-8 h-8 border border-[#E5E5E5] object-cover p-0.5 shrink-0"
+                            />
+                        )}
                         <div className="flex flex-col">
-                            <span className="text-xs font-bold tracking-widest flex items-center gap-1">
-                                {review.sns_profiles?.name || "匿名ユーザー"}
-                                {review.sns_profiles?.is_vip && (
-                                    <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-1" />
-                                )}
-                            </span>
+                            {review.reviewer_id ? (
+                                <Link href={`/cast/${review.reviewer_id}`} className="text-xs font-bold tracking-widest flex items-center gap-1 hover:underline">
+                                    {review.sns_profiles?.name || "匿名ユーザー"}
+                                    {review.sns_profiles?.is_vip && (
+                                        <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-1" />
+                                    )}
+                                </Link>
+                            ) : (
+                                <span className="text-xs font-bold tracking-widest flex items-center gap-1">
+                                    {review.sns_profiles?.name || "匿名ユーザー"}
+                                    {review.sns_profiles?.is_vip && (
+                                        <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-1" />
+                                    )}
+                                </span>
+                            )}
                             <span className="text-[10px] text-[#777] tracking-widest mt-0.5">{new Date(review.created_at).toLocaleDateString('ja-JP')}</span>
                         </div>
                       </div>
