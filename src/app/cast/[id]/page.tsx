@@ -1251,9 +1251,6 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 
                 <div className="flex flex-col gap-1.5 pb-1">
                     <div className="flex items-center gap-1.5">
-                        {profileData.is_vip && (
-                            <img src="/images/vip-crown.png" alt="VIP" className="h-5 object-contain" />
-                        )}
                         {profileData.rank && (
                             <div className={`px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase border ${
                                 profileData.rank === 'Diamond' ? 'bg-[#111] text-[#D4AF37] border-[#D4AF37]' :
@@ -1307,6 +1304,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
             <div className="flex items-center gap-2 mb-4 flex-wrap">
                 <h1 className="text-2xl font-normal text-black flex items-center gap-2 uppercase tracking-widest">
                     {cast.name || "名称未設定"}
+                    {profileData.is_vip && (
+                        <img src="/images/vip-crown.png" alt="VIP" className="h-6 object-contain" />
+                    )}
                 </h1>
             </div>
 
