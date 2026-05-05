@@ -69,6 +69,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
     storeProfileId?: string;
     phone?: string;
     contactPhone?: string;
+    is_vip?: boolean;
+    rank?: string;
   }
 
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -170,7 +172,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // The URL 'id' could be an sns_profiles ID or a casts ID.
       let { data: profile } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip')
+        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
         .eq('id', id)
         .maybeSingle();
 
@@ -184,7 +186,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            // Find linked SNS profile by matching phone to login_id
            const { data: linkedProfile } = await supabase
              .from('sns_profiles')
-             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip')
+             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
              .eq('phone', castData.login_id || 'dummy')
              .maybeSingle();
              
@@ -249,7 +251,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         storeProfileId: sProfileId,
         cover: profile?.cover_url || "",
         phone: profile?.phone || storeCast?.login_id,
-        contactPhone
+        contactPhone,
+        is_vip: profile?.is_vip || false,
+        rank: profile?.rank || 'Standard'
       }));
 
       if (profile && profile.accepts_dms === false) {
@@ -1278,9 +1282,26 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div className="mb-6">
-            <h1 className="text-2xl font-normal text-black flex items-center gap-2 uppercase tracking-widest mb-4">
-                {cast.name || "名称未設定"}
-            </h1>
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <h1 className="text-2xl font-normal text-black flex items-center gap-2 uppercase tracking-widest">
+                    {cast.name || "名称未設定"}
+                </h1>
+                {profileData.is_vip && (
+                    <img src="/images/vip-crown.png" alt="VIP" className="h-6 object-contain" />
+                )}
+                {profileData.rank && (
+                    <div className={`px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase border ${
+                        profileData.rank === 'Diamond' ? 'bg-[#111] text-[#D4AF37] border-[#D4AF37]' :
+                        profileData.rank === 'Platinum' ? 'bg-white text-[#555] border-[#555]' :
+                        profileData.rank === 'Gold' ? 'bg-[#F9F9F9] text-[#B8860B] border-[#B8860B]' :
+                        profileData.rank === 'Silver' ? 'bg-white text-[#777] border-[#CCC]' :
+                        profileData.rank === 'Bronze' ? 'bg-[#FCFCFC] text-[#8C7853] border-[#8C7853]' :
+                        'bg-white text-black border-[#E5E5E5]'
+                    }`}>
+                        {profileData.rank}
+                    </div>
+                )}
+            </div>
 
             {reviewStats.count > 0 && (
                 <div className="flex items-center gap-1 mt-2 mb-4 text-xs font-bold tracking-widest text-[#B8860B]">
