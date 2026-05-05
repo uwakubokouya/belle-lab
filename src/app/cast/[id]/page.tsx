@@ -1231,21 +1231,43 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       {/* Profile Info */}
       <div className="px-6 relative mb-8">
         <div className="flex justify-between items-end -mt-10 mb-4">
-            <div 
-                className="relative w-20 h-20 bg-white border border-black overflow-hidden z-20 p-1 cursor-pointer"
-                onClick={(e) => {
-                   e.stopPropagation();
-                   if (cast.image) setFullscreenImage(cast.image);
-                }}
-            >
-                {cast.image ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={cast.image} alt={cast.name} className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full bg-[#E5E5E5] flex items-center justify-center text-[#777777]">
-                        <UserPlus size={24} className="stroke-[1.5]" />
+            <div className="flex items-end gap-3 z-20">
+                <div 
+                    className="relative w-20 h-20 bg-white border border-black overflow-hidden p-1 cursor-pointer shrink-0"
+                    onClick={(e) => {
+                       e.stopPropagation();
+                       if (cast.image) setFullscreenImage(cast.image);
+                    }}
+                >
+                    {cast.image ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={cast.image} alt={cast.name} className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full bg-[#E5E5E5] flex items-center justify-center text-[#777777]">
+                            <UserPlus size={24} className="stroke-[1.5]" />
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex flex-col gap-1.5 pb-1">
+                    <div className="flex items-center gap-1.5">
+                        {profileData.is_vip && (
+                            <img src="/images/vip-crown.png" alt="VIP" className="h-5 object-contain" />
+                        )}
+                        {profileData.rank && (
+                            <div className={`px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase border ${
+                                profileData.rank === 'Diamond' ? 'bg-[#111] text-[#D4AF37] border-[#D4AF37]' :
+                                profileData.rank === 'Platinum' ? 'bg-white text-[#555] border-[#555]' :
+                                profileData.rank === 'Gold' ? 'bg-[#F9F9F9] text-[#B8860B] border-[#B8860B]' :
+                                profileData.rank === 'Silver' ? 'bg-white text-[#777] border-[#CCC]' :
+                                profileData.rank === 'Bronze' ? 'bg-[#FCFCFC] text-[#8C7853] border-[#8C7853]' :
+                                'bg-white text-black border-[#E5E5E5]'
+                            }`}>
+                                {profileData.rank}
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
             {user?.id === id ? (
                 <div className="flex gap-2">
@@ -1286,21 +1308,6 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                 <h1 className="text-2xl font-normal text-black flex items-center gap-2 uppercase tracking-widest">
                     {cast.name || "名称未設定"}
                 </h1>
-                {profileData.is_vip && (
-                    <img src="/images/vip-crown.png" alt="VIP" className="h-6 object-contain" />
-                )}
-                {profileData.rank && (
-                    <div className={`px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase border ${
-                        profileData.rank === 'Diamond' ? 'bg-[#111] text-[#D4AF37] border-[#D4AF37]' :
-                        profileData.rank === 'Platinum' ? 'bg-white text-[#555] border-[#555]' :
-                        profileData.rank === 'Gold' ? 'bg-[#F9F9F9] text-[#B8860B] border-[#B8860B]' :
-                        profileData.rank === 'Silver' ? 'bg-white text-[#777] border-[#CCC]' :
-                        profileData.rank === 'Bronze' ? 'bg-[#FCFCFC] text-[#8C7853] border-[#8C7853]' :
-                        'bg-white text-black border-[#E5E5E5]'
-                    }`}>
-                        {profileData.rank}
-                    </div>
-                )}
             </div>
 
             {reviewStats.count > 0 && (
