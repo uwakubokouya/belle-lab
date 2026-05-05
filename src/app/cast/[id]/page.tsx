@@ -74,6 +74,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
     contactPhone?: string;
     is_vip?: boolean;
     rank?: string;
+    ageGroup?: string;
   }
 
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -175,7 +176,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // The URL 'id' could be an sns_profiles ID or a casts ID.
       let { data: profile } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
+        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group')
         .eq('id', id)
         .maybeSingle();
 
@@ -189,7 +190,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            // Find linked SNS profile by matching phone to login_id
            const { data: linkedProfile } = await supabase
              .from('sns_profiles')
-             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank')
+             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group')
              .eq('phone', castData.login_id || 'dummy')
              .maybeSingle();
              
@@ -256,7 +257,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         phone: profile?.phone || storeCast?.login_id,
         contactPhone,
         is_vip: profile?.is_vip || false,
-        rank: profile?.rank || 'Standard'
+        rank: profile?.rank || 'Standard',
+        ageGroup: profile?.age_group || undefined
       }));
 
       if (profile && profile.accepts_dms === false) {
@@ -1382,13 +1384,16 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
-                <h1 className="text-2xl font-normal text-black flex items-center gap-2 uppercase tracking-widest">
+            <div className="flex flex-col gap-1 mb-4">
+                <h1 className="text-2xl font-normal text-black flex items-center gap-2 uppercase tracking-widest flex-wrap">
                     {cast.name || "名称未設定"}
                     {profileData.is_vip && (
                         <img src="/images/vip-crown.png" alt="VIP" className="h-6 object-contain" />
                     )}
                 </h1>
+                {profileData.ageGroup && (
+                    <span className="text-[10px] text-[#777777] tracking-widest block">{profileData.ageGroup}</span>
+                )}
             </div>
 
             {reviewStats.count > 0 && (

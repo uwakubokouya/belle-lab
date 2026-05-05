@@ -343,16 +343,6 @@ export default function AccountSettingsPage() {
             </select>
           </div>
 
-          <div className="space-y-2 block">
-            <label className="text-[10px] uppercase tracking-widest text-[#777777]">Bio / 自己紹介</label>
-            <textarea 
-              value={bio}
-              onChange={e => setBio(e.target.value)}
-              className="w-full border-b border-[#E5E5E5] pb-2 pt-2 text-base outline-none focus:border-black transition-colors bg-transparent rounded-none min-h-[100px] resize-none leading-relaxed"
-              placeholder="例：仕事終わりに遊びに行くことが多いです。甘えさせてくれる優しい子がタイプです！マッサージメインでゆっくり癒やされたい派なので、よろしくお願いします。"
-            />
-          </div>
-
           <div className="pt-4 border-t border-[#E5E5E5] space-y-8">
             <div className="space-y-2 block">
               <label className="text-[10px] uppercase tracking-widest text-[#777777]">New Password</label>
