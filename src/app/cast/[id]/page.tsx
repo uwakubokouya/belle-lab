@@ -455,19 +455,42 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // 5. Fetch Customer Tab Data (if customer)
       if (profile?.role === 'customer') {
           const fetchCustomerData = async () => {
-              // Fetch posted reviews
               const { data: postedRevs } = await supabase
                 .from('sns_reviews')
                 .select(`
-                  id, rating, score, visited_date, content, created_at, target_cast_id, visibility, status,
-                  sns_profiles!sns_reviews_target_cast_id_fkey(name, avatar_url, is_vip)
+                  id, rating, score, visited_date, content, created_at, target_cast_id, visibility, status
                 `)
                 .eq('reviewer_id', actualCastId)
                 .order('created_at', { ascending: false });
               
-              if (postedRevs) {
-                  // 他のカスタマーからは見えない等の制御を入れる場合（今回は全公開なのでそのまま）
-                  setPostedReviews(postedRevs.filter((r: any) => r.status !== 'rejected'));
+              if (postedRevs && postedRevs.length > 0) {
+                  // Fetch profiles for the target_cast_ids in a separate query to avoid FK resolution errors
+                  const castIds = [...new Set(postedRevs.map((r: any) => r.target_cast_id))].filter(Boolean);
+                  
+                  if (castIds.length > 0) {
+                      const { data: castProfiles } = await supabase
+                          .from('sns_profiles')
+                          .select('id, name, avatar_url, is_vip')
+                          .in('id', castIds);
+                          
+                      const profileMap: Record<string, any> = {};
+                      if (castProfiles) {
+                          castProfiles.forEach((p: any) => {
+                              profileMap[p.id] = p;
+                          });
+                      }
+                      
+                      const reviewsWithProfiles = postedRevs.map((r: any) => ({
+                          ...r,
+                          sns_profiles: profileMap[r.target_cast_id] || { name: '不明なキャスト', avatar_url: null, is_vip: false }
+                      }));
+                      
+                      setPostedReviews(reviewsWithProfiles.filter((r: any) => r.status !== 'rejected'));
+                  } else {
+                      setPostedReviews(postedRevs.filter((r: any) => r.status !== 'rejected'));
+                  }
+              } else {
+                  setPostedReviews([]);
               }
 
               // Fetch following casts
