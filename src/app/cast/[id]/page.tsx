@@ -176,7 +176,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // The URL 'id' could be an sns_profiles ID or a casts ID.
       let { data: profile } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group')
+        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group, bio')
         .eq('id', id)
         .maybeSingle();
 
@@ -190,7 +190,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            // Find linked SNS profile by matching phone to login_id
            const { data: linkedProfile } = await supabase
              .from('sns_profiles')
-             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group')
+             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group, bio')
              .eq('phone', castData.login_id || 'dummy')
              .maybeSingle();
              
@@ -203,7 +203,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       }
 
       let castName = profile?.name || "";
-      let castBio = /* profile?.bio || */ ""; // bio doesn't exist in schema
+      let castBio = profile?.bio || "";
 
       // Fetch Store Info for Badge
       let sName = "";
