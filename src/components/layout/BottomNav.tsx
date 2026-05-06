@@ -42,7 +42,7 @@ export default function BottomNav() {
                    setHasPendingReviews(false);
                 }
             }
-        } else if (user.is_admin && user.role !== 'store') {
+        } else if (user.is_admin && (user.role as string) !== 'store') {
             const { count } = await supabase.from('sns_reviews').select('*', { count: 'exact', head: true })
                .eq('status', 'pending');
             setHasPendingReviews((count || 0) > 0);
