@@ -71,9 +71,9 @@ export default function AgeGuard({ children }: { children: React.ReactNode }) {
             {/* Close Button */}
             <button 
               onClick={() => setShowImageModal(false)}
-              className="absolute top-6 right-6 z-[10001] bg-white/20 p-2 rounded-full hover:bg-white/40 transition-colors"
+              className="absolute top-6 right-6 z-[10001] bg-white p-2 rounded-full hover:bg-[#F9F9F9] transition-colors shadow-sm"
             >
-              <X size={24} className="text-white" />
+              <X size={24} className="text-black stroke-[2]" />
             </button>
             
             {/* Modal Content (Image) */}
