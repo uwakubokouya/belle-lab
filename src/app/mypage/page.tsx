@@ -234,14 +234,16 @@ export default function MyPage() {
               <ChevronRight size={16} className="text-[#777777]" />
             </Link>
           )}
-          
-          <Link href="/mypage/my-reviews" className="w-full px-6 py-4 flex items-center justify-between border-b border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors">
-            <div className="flex items-center gap-3">
-              <Star size={18} className="stroke-[1.5]" />
-              <span className="text-xs tracking-widest">投稿した口コミ</span>
-            </div>
-            <ChevronRight size={16} className="text-[#777777]" />
-          </Link>
+          {user?.role !== 'cast' && (user?.role as string) !== 'store' && (
+            <Link href="/mypage/my-reviews" className="w-full px-6 py-4 flex items-center justify-between border-b border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors">
+              <div className="flex items-center gap-3">
+                <Star size={18} className="stroke-[1.5]" />
+                <span className="text-xs tracking-widest">投稿した口コミ</span>
+              </div>
+              <ChevronRight size={16} className="text-[#777777]" />
+            </Link>
+          )}
+
 
           {user?.role === 'cast' ? (
             <Link href="/mypage/settings?open=pref" className="w-full px-6 py-4 flex items-center justify-between hover:bg-[#F9F9F9] transition-colors">
