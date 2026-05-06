@@ -848,21 +848,23 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         setShowAuthPrompt(true);
         return;
     }
-    const reason = window.prompt("通報する理由を入力してください:");
+    const reason = reportReason.trim();
     if (!reason) return;
 
     await supabase.rpc('report_review', { p_review_id: reviewId, p_reporter_id: user.id, p_reason: reason });
-    alert("通報を送信しました。");
+    setPromptModal({ isOpen: false, reviewId: null });
+    setReportReason("");
+    setMessageModal({ isOpen: true, message: "通報を送信しました。運営チームにて確認いたします。" });
   };
 
   const handleDeleteReview = async (reviewId: string) => {
     if (!user) return;
-    const confirm = window.confirm("本当にこの口コミを削除しますか？");
-    if (!confirm) return;
 
     await supabase.from('sns_reviews').delete().eq('id', reviewId).eq('reviewer_id', user.id);
     setPostedReviews(prev => prev.filter(r => r.id !== reviewId));
     setReviews(prev => prev.filter(r => r.id !== reviewId));
+    setConfirmModal({ isOpen: false, reviewId: null });
+    setMessageModal({ isOpen: true, message: "口コミを削除しました。" });
   };
 
   const handleMessage = () => {
