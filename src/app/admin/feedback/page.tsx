@@ -128,7 +128,13 @@ export default function AdminFeedbackPage() {
     }
 
     await supabase.from('sns_feedbacks').update({ status: 'read' }).eq('id', feedbackId);
-    setFeedbacks(prev => prev.map(f => f.id === feedbackId ? { ...f, status: 'read' } : f));
+    setFeedbacks(prev => prev.map(f => {
+      const updatedF = f.id === feedbackId ? { ...f, status: 'read' as const } : { ...f };
+      if (updatedF.reviewDetails?.id === reviewId) {
+        updatedF.reviewDetails = undefined;
+      }
+      return updatedF;
+    }));
     setResultModal({ isOpen: true, type: 'success', message: '口コミを削除し、この通報を既読にしました。' });
   };
 
