@@ -58,6 +58,10 @@ export default function AgeGuard({ children }: { children: React.ReactNode }) {
                   NO (18歳未満・退出する)
                 </button>
             </div>
+
+            <div className="mt-12 w-full px-4">
+              <img src="/images/ba67d821-df64-461b-ba2a-ddb18cf11c70.png" alt="Notice" className="w-full h-auto object-contain mx-auto" />
+            </div>
         </div>
       </div>
     );
