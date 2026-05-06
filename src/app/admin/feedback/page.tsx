@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MessageSquare, Check, Mail, Phone, Clock, X, CheckCircle2, Copy, Trash2 } from "lucide-react";
+import { ChevronLeft, MessageSquare, Check, Mail, Phone, Clock, X, CheckCircle2, Copy, Trash2, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/providers/UserProvider";
 
@@ -15,6 +15,7 @@ interface Feedback {
   created_at: string;
   user_id: string | null;
   isVip?: boolean;
+  reviewDetails?: { id: string; content: string; rating: number; score: number };
 }
 
 export default function AdminFeedbackPage() {
@@ -68,6 +69,26 @@ export default function AdminFeedbackPage() {
               });
           }
       }
+
+      // Fetch review details for reports
+      const reviewIds = fbData.map(f => {
+        const match = f.content.match(/レビューID:\s*([a-f0-9\-]{36})/);
+        return match ? match[1] : null;
+      }).filter(Boolean) as string[];
+
+      if (reviewIds.length > 0) {
+        const { data: reviewsData } = await supabase.from('sns_reviews').select('id, content, rating, score').in('id', reviewIds);
+        if (reviewsData) {
+          const reviewMap = new Map(reviewsData.map(r => [r.id, r]));
+          fbData.forEach(f => {
+            const match = f.content.match(/レビューID:\s*([a-f0-9\-]{36})/);
+            if (match && match[1]) {
+              f.reviewDetails = reviewMap.get(match[1]);
+            }
+          });
+        }
+      }
+
       setFeedbacks(fbData);
     }
     setIsLoading(false);
@@ -251,21 +272,37 @@ export default function AdminFeedbackPage() {
                     {fb.content}
                   </p>
                   {fb.content.includes('[口コミ通報]') && (
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => {
-                          const match = fb.content.match(/レビューID:\s*([a-f0-9\-]{36})/);
-                          if (match && match[1]) {
-                            requestDeleteReportedReview(match[1], fb.id);
-                          } else {
-                            setResultModal({ isOpen: true, type: 'error', message: "レビューIDが見つかりませんでした。" });
-                          }
-                        }}
-                        className="px-4 py-2 bg-[#E02424] text-white text-[10px] tracking-widest font-bold hover:bg-[#C81E1E] transition-colors flex items-center gap-2"
-                      >
-                        <Trash2 size={14} className="stroke-[2]" />
-                        この口コミを削除する
-                      </button>
+                    <div className="mt-4 border border-[#E5E5E5] bg-white p-4">
+                      <p className="text-[10px] tracking-widest text-[#777] mb-3 uppercase">対象の口コミ内容</p>
+                      {fb.reviewDetails ? (
+                        <>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="flex">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star key={star} size={12} className={star <= fb.reviewDetails!.rating ? 'fill-black text-black' : 'fill-transparent text-[#E5E5E5]'} />
+                              ))}
+                            </span>
+                            <span className="text-xs font-bold">{fb.reviewDetails.score}点</span>
+                          </div>
+                          <p className="text-xs leading-relaxed text-[#333] whitespace-pre-wrap font-light mb-4">
+                            {fb.reviewDetails.content}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-[#E02424] mb-4">（この口コミはすでに削除されています）</p>
+                      )}
+                      
+                      {fb.reviewDetails && (
+                        <div className="flex justify-end pt-3 border-t border-[#E5E5E5]">
+                          <button
+                            onClick={() => requestDeleteReportedReview(fb.reviewDetails!.id, fb.id)}
+                            className="px-4 py-2 bg-[#E02424] text-white text-[10px] tracking-widest font-bold hover:bg-[#C81E1E] transition-colors flex items-center gap-2"
+                          >
+                            <Trash2 size={14} className="stroke-[2]" />
+                            この口コミを削除する
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
