@@ -1,9 +1,11 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 
 export default function AgeGuard({ children }: { children: React.ReactNode }) {
   const [isVerified, setIsVerified] = useState(true); // Default true to avoid flash before effect
   const [isChecking, setIsChecking] = useState(true);
+  const [showImageModal, setShowImageModal] = useState(true);
 
   useEffect(() => {
     const verified = localStorage.getItem('age_verified');
@@ -59,10 +61,31 @@ export default function AgeGuard({ children }: { children: React.ReactNode }) {
                 </button>
             </div>
 
-            <div className="mt-12 w-full px-4">
-              <img src="/images/ba67d821-df64-461b-ba2a-ddb18cf11c70.png" alt="Notice" className="w-full h-auto object-contain mx-auto" />
             </div>
         </div>
+
+        {/* -------------------- Image Modal -------------------- */}
+        {showImageModal && (
+          <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-6 right-6 z-[10001] bg-white/20 p-2 rounded-full hover:bg-white/40 transition-colors"
+            >
+              <X size={24} className="text-white" />
+            </button>
+            
+            {/* Modal Content (Image) */}
+            <div className="relative w-full max-w-md max-h-[85vh] flex items-center justify-center">
+              <img 
+                src="/images/ba67d821-df64-461b-ba2a-ddb18cf11c70.png" 
+                alt="Special Notice" 
+                className="w-full h-auto object-contain"
+              />
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
