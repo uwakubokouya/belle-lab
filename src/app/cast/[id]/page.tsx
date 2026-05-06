@@ -2136,7 +2136,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
              <p className="text-xs text-[#333] mb-6 leading-relaxed">本当にこの口コミを削除しますか？<br/>削除した口コミは元に戻せません。</p>
              <div className="flex gap-3">
                <button onClick={() => setConfirmModal({isOpen: false, reviewId: null})} className="flex-1 py-3 text-xs tracking-widest border border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors">キャンセル</button>
-               <button onClick={handleDeleteReview} className="flex-1 py-3 bg-[#E02424] text-white text-xs tracking-widest hover:bg-[#E02424]/90 transition-colors">削除する</button>
+               <button onClick={() => confirmModal.reviewId && handleDeleteReview(confirmModal.reviewId)} className="flex-1 py-3 bg-[#E02424] text-white text-xs tracking-widest hover:bg-[#E02424]/90 transition-colors">削除する</button>
              </div>
           </div>
         </div>
