@@ -428,7 +428,14 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // 4. Fetch Posts Data using actualCastId
       const { data: feedPosts } = await supabase
         .from('sns_posts')
-        .select('*')
+        .select(`
+          *,
+          quoted_review_id,
+          sns_reviews!sns_posts_quoted_review_id_fkey (
+            id, rating, score, visited_date, content, reviewer_id,
+            sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
+          )
+        `)
         .eq('cast_id', actualCastId)
         .order('is_pinned', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
@@ -470,7 +477,8 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                  isLocked: p.isLocked,
                  lockReason: p.lockReason,
                  postType: p.post_type,
-                 isPinned: p.is_pinned
+                 isPinned: p.is_pinned,
+                 quotedReview: p.sns_reviews
              };
          }));
       }

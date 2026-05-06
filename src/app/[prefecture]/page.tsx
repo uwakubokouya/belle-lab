@@ -307,11 +307,16 @@ export default function Home() {
         created_at,
         cast_id,
         post_type,
+        quoted_review_id,
         sns_profiles!cast_id!inner (
           name,
           avatar_url,
           phone,
           role
+        ),
+        sns_reviews!sns_posts_quoted_review_id_fkey (
+          id, rating, score, visited_date, content, reviewer_id,
+          sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
         )
       `)
       .in('cast_id', targetSnsIds)
@@ -768,6 +773,7 @@ export default function Home() {
                 storeName={post.storeName}
                 storeProfileId={post.storeProfileId}
                 postType={post.post_type}
+                quotedReview={post.sns_reviews}
               />
             ))
           ) : (

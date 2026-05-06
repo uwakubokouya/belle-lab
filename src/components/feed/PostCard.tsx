@@ -29,6 +29,7 @@ interface PostProps {
   storeProfileId?: string;
   postType?: string;
   isPinned?: boolean;
+  quotedReview?: any;
 }
 
 export default function PostCard({
@@ -53,6 +54,7 @@ export default function PostCard({
   storeProfileId,
   postType,
   isPinned = false,
+  quotedReview,
 }: PostProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -338,6 +340,37 @@ export default function PostCard({
                     </div>
                 )})}
             </div>
+          )}
+
+          {/* Quoted Review Card */}
+          {quotedReview && (
+              <div className={`mb-4 border border-[#E5E5E5] bg-[#F9F9F9] p-4 ${localIsLocked ? 'blur-[4px] select-none pointer-events-none' : ''}`}>
+                  <div className="flex items-center gap-3 mb-2">
+                       <Link href={`/cast/${quotedReview.reviewer_id}`} className="w-8 h-8 border border-[#E5E5E5] bg-white overflow-hidden hover:opacity-80 transition-opacity">
+                           <img 
+                              src={quotedReview.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                              alt="Profile" 
+                              className="w-full h-full object-cover" 
+                           />
+                       </Link>
+                       <div>
+                           <Link href={`/cast/${quotedReview.reviewer_id}`} className="text-[10px] font-bold tracking-widest flex items-center gap-1 hover:underline decoration-black underline-offset-4">
+                              {quotedReview.sns_profiles?.name || "匿名ユーザー"}
+                              {quotedReview.sns_profiles?.is_vip && (
+                                  <img src="/images/vip-crown.png" alt="VIP" className="h-3 object-contain ml-0.5" />
+                              )}
+                           </Link>
+                           <p className="text-[9px] text-[#777777] tracking-widest mt-0.5">訪問日: {quotedReview.visited_date}</p>
+                       </div>
+                  </div>
+                  <div className="flex items-center gap-1 mb-2">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                       <span className="text-[10px] font-bold ml-1">{quotedReview.score}点</span>
+                  </div>
+                  <p className="text-[11px] text-[#333333] leading-relaxed line-clamp-3">
+                      {quotedReview.content}
+                  </p>
+              </div>
           )}
 
           {/* Business Info Banner - Minimalist High Fashion */}

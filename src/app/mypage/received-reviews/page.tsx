@@ -30,13 +30,7 @@ export default function ReceivedReviewsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const createThankYouUrl = (review: Review) => {
-    const maxLength = 40;
-    const truncated = review.content.length > maxLength 
-       ? review.content.substring(0, maxLength) + '...'
-       : review.content;
-       
-    const quote = `【口コミのお礼】\n「${truncated}」\n素敵な口コミありがとうございます！\n\n`;
-    return `/post?quote=${encodeURIComponent(quote)}`;
+    return `/post?quoted_review_id=${review.id}`;
   };
 
   useEffect(() => {

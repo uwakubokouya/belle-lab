@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { X, ImagePlus, Sparkles, User as UserIcon } from "lucide-react";
+import { X, ImagePlus, Sparkles, User as UserIcon, Star } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { useUser } from '@/providers/UserProvider';
 import { supabase } from '@/lib/supabase';
@@ -10,6 +10,8 @@ export default function PostCreationPage() {
     const [content, setContent] = useState("");
     const [images, setImages] = useState<File[]>([]);
     const [postType, setPostType] = useState<"全員" | "会員" | "フォロワー">("全員");
+    const [quotedReviewId, setQuotedReviewId] = useState<string | null>(null);
+    const [quotedReview, setQuotedReview] = useState<any>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -23,8 +25,27 @@ export default function PostCreationPage() {
             if (quote) {
                 setContent(quote);
             }
+            const qId = params.get('quoted_review_id');
+            if (qId) {
+                setQuotedReviewId(qId);
+                fetchQuotedReview(qId);
+            }
         }
     }, []);
+
+    const fetchQuotedReview = async (id: string) => {
+        const { data } = await supabase
+            .from('sns_reviews')
+            .select(`
+              id, rating, score, visited_date, content,
+              sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
+            `)
+            .eq('id', id)
+            .single();
+        if (data) {
+            setQuotedReview(data);
+        }
+    };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -75,8 +96,9 @@ export default function PostCreationPage() {
                   cast_id: user.id,
                   content: content.trim(),
                   images: uploadedUrls,
-                  post_type: postType // Supposing post_type column is added
-              } as any); // using any here just in case types are not up-to-date
+                  post_type: postType,
+                  quoted_review_id: quotedReviewId
+              } as any); 
               
           if (postError) throw new Error("投稿の保存に失敗しました: " + postError.message);
           
@@ -143,6 +165,45 @@ export default function PostCreationPage() {
                     placeholder="いまどうしてる？（出勤状況や挨拶などを入力）"
                     className="w-full bg-transparent text-black text-lg resize-none outline-none min-h-[150px] placeholder:text-[#E5E5E5] mb-6 font-light tracking-wide leading-relaxed"
                 />
+
+                {/* Quoted Review Preview */}
+                {quotedReview && (
+                    <div className="mb-6 border border-[#E5E5E5] bg-[#F9F9F9] p-4 relative">
+                        <button 
+                            onClick={() => { setQuotedReview(null); setQuotedReviewId(null); }}
+                            className="absolute top-2 right-2 p-1 bg-white border border-[#E5E5E5] text-[#777777] hover:text-black hover:bg-[#F9F9F9] transition-colors"
+                        >
+                            <X size={12} className="stroke-[1.5]" />
+                        </button>
+                        <div className="flex items-center gap-3 mb-2">
+                             <div className="w-8 h-8 border border-[#E5E5E5] bg-white overflow-hidden">
+                                 <img 
+                                    src={quotedReview.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                    alt="Profile" 
+                                    className="w-full h-full object-cover" 
+                                 />
+                             </div>
+                             <div>
+                                 <p className="text-[10px] font-bold tracking-widest flex items-center gap-1">
+                                    {quotedReview.sns_profiles?.name || "匿名ユーザー"}
+                                    {quotedReview.sns_profiles?.is_vip && (
+                                        <img src="/images/vip-crown.png" alt="VIP" className="h-3 object-contain ml-0.5" />
+                                    )}
+                                 </p>
+                                 <p className="text-[9px] text-[#777777] tracking-widest mt-0.5">訪問日: {quotedReview.visited_date}</p>
+                             </div>
+                        </div>
+                        <div className="flex items-center gap-1 mb-2">
+                             {[1, 2, 3, 4, 5].map((s) => (
+                               <Star key={s} size={10} className={s <= quotedReview.rating ? 'fill-black text-black' : 'fill-transparent text-[#E5E5E5]'} />
+                             ))}
+                             <span className="text-[10px] font-bold ml-1">{quotedReview.score}点</span>
+                        </div>
+                        <p className="text-[11px] text-[#333333] leading-relaxed line-clamp-3">
+                            {quotedReview.content}
+                        </p>
+                    </div>
+                )}
 
                 {/* AI Assistant Button - Temporarily hidden */}
                 {false && (
