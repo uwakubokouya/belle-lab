@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { X, ImagePlus, Sparkles, User as UserIcon } from "lucide-react";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '@/providers/UserProvider';
 import { supabase } from '@/lib/supabase';
 
@@ -15,6 +15,16 @@ export default function PostCreationPage() {
     const [errorMessage, setErrorMessage] = useState("");
     const { user } = useUser();
     const router = useRouter();
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const quote = params.get('quote');
+            if (quote) {
+                setContent(quote);
+            }
+        }
+    }, []);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {

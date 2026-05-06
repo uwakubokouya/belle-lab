@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Star } from 'lucide-react';
+import { ChevronLeft, Star, PenLine } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/providers/UserProvider';
 import Link from 'next/link';
@@ -28,6 +28,16 @@ export default function ReceivedReviewsPage() {
   const { user, isMounted } = useUser();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const createThankYouUrl = (review: Review) => {
+    const maxLength = 40;
+    const truncated = review.content.length > maxLength 
+       ? review.content.substring(0, maxLength) + '...'
+       : review.content;
+       
+    const quote = `【口コミのお礼】\n「${truncated}」\n素敵な口コミありがとうございます！\n\n`;
+    return `/post?quote=${encodeURIComponent(quote)}`;
+  };
 
   useEffect(() => {
     if (!isMounted) return;
@@ -136,13 +146,20 @@ export default function ReceivedReviewsPage() {
                </p>
                
                {review.reply_content && (
-                  <div className="bg-[#F9F9F9] border border-[#E5E5E5] p-3">
+                  <div className="bg-[#F9F9F9] border border-[#E5E5E5] p-3 mb-4">
                      <p className="text-[10px] font-bold tracking-widest mb-1">店舗からの返信</p>
                      <p className="text-[11px] text-[#333333] whitespace-pre-wrap leading-relaxed">
                         {review.reply_content}
                      </p>
                   </div>
                )}
+
+               <div className="flex justify-end pt-3 border-t border-[#E5E5E5]">
+                   <Link href={createThankYouUrl(review)} className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-black border border-black px-4 py-2 hover:bg-black hover:text-white transition-colors">
+                       <PenLine size={12} className="stroke-[1.5]" />
+                       お礼を投稿する
+                   </Link>
+               </div>
              </div>
            ))
         )}
