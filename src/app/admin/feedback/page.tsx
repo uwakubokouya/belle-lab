@@ -121,9 +121,14 @@ export default function AdminFeedbackPage() {
 
     setDeleteReviewConfirm({ isOpen: false, reviewId: null, feedbackId: null });
 
-    const { error: deleteError } = await supabase.from('sns_reviews').delete().eq('id', reviewId);
+    // RLSによるサイレント失敗を防ぐため、特権RPCを使用して確実に削除する
+    const { error: deleteError } = await supabase.rpc('admin_delete_review', {
+      p_review_id: reviewId,
+      p_admin_id: user?.id
+    });
+    
     if (deleteError) {
-      setResultModal({ isOpen: true, type: 'error', message: '口コミの削除に失敗しました。' });
+      setResultModal({ isOpen: true, type: 'error', message: `口コミの削除に失敗しました: ${deleteError.message}` });
       return;
     }
 
