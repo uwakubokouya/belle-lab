@@ -48,6 +48,7 @@ export default function ReceivedReviewsPage() {
           `)
           .eq('target_cast_id', user.id)
           .eq('status', 'approved')
+          .eq('visibility', 'public')
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -102,20 +103,20 @@ export default function ReceivedReviewsPage() {
              <div key={review.id} className="bg-white border border-[#E5E5E5] p-5">
                <div className="flex justify-between items-start border-b border-[#E5E5E5] pb-3 mb-3">
                   <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 border border-[#E5E5E5] bg-[#F9F9F9] overflow-hidden">
+                     <Link href={`/cast/${review.reviewer_id}`} className="w-10 h-10 border border-[#E5E5E5] bg-[#F9F9F9] overflow-hidden hover:opacity-80 transition-opacity">
                          <img 
                             src={review.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
                             alt="Profile" 
                             className="w-full h-full object-cover" 
                          />
-                     </div>
+                     </Link>
                      <div>
-                         <p className="text-xs font-bold tracking-widest flex items-center gap-2">
+                         <Link href={`/cast/${review.reviewer_id}`} className="text-xs font-bold tracking-widest flex items-center gap-1 hover:underline decoration-black underline-offset-4">
                             {review.sns_profiles?.name || "退会したユーザー"}
                             {review.sns_profiles?.is_vip && (
-                                <span className="text-[9px] bg-black text-white px-1.5 py-0.5 tracking-widest font-normal">VIP</span>
+                                <img src="/images/vip-crown.png" alt="VIP" className="h-4 object-contain ml-0.5" />
                             )}
-                         </p>
+                         </Link>
                          <p className="text-[10px] text-[#777777] tracking-widest mt-0.5">訪問日: {review.visited_date}</p>
                      </div>
                   </div>
