@@ -2,7 +2,7 @@
 import { useUser } from "@/providers/UserProvider";
 import { LogOut, ChevronRight, User as UserIcon, Settings, Bell, CircleHelp, MessageSquare, ShieldAlert, Footprints, BarChart3, Star, Check, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function MyPage() {
@@ -12,6 +12,40 @@ export default function MyPage() {
   const [gachaState, setGachaState] = useState<'spinning' | 'result' | 'error' | 'already_claimed'>('spinning');
   const [gachaResult, setGachaResult] = useState<{added: number, total: number} | null>(null);
   const [gachaErrorMsg, setGachaErrorMsg] = useState("");
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
+
+  useEffect(() => {
+     if (!user) return;
+     const fetchPendingCount = async () => {
+         if (user.role === 'store') {
+            let myStoreId = null;
+            const { data: snsProfile } = await supabase.from('sns_profiles').select('store_id').eq('id', user.id).maybeSingle();
+            if (snsProfile?.store_id) myStoreId = snsProfile.store_id;
+            else if (user.phone) {
+                const { data: dbProfile } = await supabase.from('profiles').select('store_id').eq('username', user.phone).eq('role', 'admin').maybeSingle();
+                if (dbProfile?.store_id) myStoreId = dbProfile.store_id;
+            }
+
+            if (myStoreId) {
+                const { data: castsInStore } = await supabase.from('sns_profiles').select('id').eq('store_id', myStoreId);
+                const castIds = castsInStore ? castsInStore.map(c => c.id) : [];
+                const { data: legacyCasts } = await supabase.from('casts').select('id').eq('store_id', myStoreId);
+                if (legacyCasts) legacyCasts.forEach(lc => castIds.push(lc.id));
+
+                if (castIds.length > 0) {
+                   const { count } = await supabase.from('sns_reviews').select('*', { count: 'exact', head: true })
+                      .eq('status', 'pending').eq('visibility', 'public').in('target_cast_id', castIds);
+                   setPendingReviewCount(count || 0);
+                }
+            }
+         } else if (user.is_admin && user.role !== 'store') {
+            const { count } = await supabase.from('sns_reviews').select('*', { count: 'exact', head: true })
+               .eq('status', 'pending');
+            setPendingReviewCount(count || 0);
+         }
+     };
+     fetchPendingCount();
+  }, [user]);
 
   const handleDailyGacha = async () => {
     if (!user) return;
@@ -133,7 +167,14 @@ export default function MyPage() {
                 店舗アクセス解析
               </Link>
               <Link href="/mypage/reviews" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors">
-                <Check size={18} className="stroke-[1.5]" />
+                <div className="relative">
+                  <Check size={18} className="stroke-[1.5]" />
+                  {pendingReviewCount > 0 && (
+                    <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full group-hover:bg-black">
+                      <Bell size={12} className="text-[#E02424] fill-[#E02424] animate-ring origin-top" />
+                    </div>
+                  )}
+                </div>
                 口コミ審査
               </Link>
             </>
@@ -145,7 +186,14 @@ export default function MyPage() {
                 全店舗・ユーザー向けのお知らせ配信
               </Link>
               <Link href="/mypage/reviews" className="bg-white border border-black text-black w-full py-4 text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-black hover:text-white transition-colors">
-                <Check size={18} className="stroke-[1.5]" />
+                <div className="relative">
+                  <Check size={18} className="stroke-[1.5]" />
+                  {pendingReviewCount > 0 && (
+                    <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full group-hover:bg-black">
+                      <Bell size={12} className="text-[#E02424] fill-[#E02424] animate-ring origin-top" />
+                    </div>
+                  )}
+                </div>
                 VIP口コミ審査
               </Link>
             </>
@@ -186,6 +234,15 @@ export default function MyPage() {
               <ChevronRight size={16} className="text-[#777777]" />
             </Link>
           )}
+          
+          <Link href="/mypage/my-reviews" className="w-full px-6 py-4 flex items-center justify-between border-b border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors">
+            <div className="flex items-center gap-3">
+              <Star size={18} className="stroke-[1.5]" />
+              <span className="text-xs tracking-widest">投稿した口コミ</span>
+            </div>
+            <ChevronRight size={16} className="text-[#777777]" />
+          </Link>
+
           {user?.role === 'cast' ? (
             <Link href="/mypage/settings?open=pref" className="w-full px-6 py-4 flex items-center justify-between hover:bg-[#F9F9F9] transition-colors">
               <div className="flex items-center gap-3">

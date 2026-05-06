@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Check, X, Star, Lock } from "lucide-react";
+import { ChevronLeft, Check, X, Star, Lock, MessageCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/providers/UserProvider";
 import Link from 'next/link';
@@ -12,11 +12,16 @@ export default function MypageReviewsPage() {
   const { user, isLoading } = useUser();
   const [reviews, setReviews] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, reviewId: string | null, newStatus: 'approved' | 'rejected' | null}>({
     isOpen: false,
     reviewId: null,
     newStatus: null
   });
+  const [messageModal, setMessageModal] = useState<{isOpen: boolean, message: string}>({isOpen: false, message: ""});
+
+  const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
+  const [isSubmittingReply, setIsSubmittingReply] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isLoading || !user) return;
@@ -25,20 +30,20 @@ export default function MypageReviewsPage() {
       return;
     }
 
-    fetchPendingReviews();
-  }, [user, isLoading]);
+    fetchReviews();
+  }, [user, isLoading, activeTab]);
 
-  const fetchPendingReviews = async () => {
+  const fetchReviews = async () => {
     setIsFetching(true);
     try {
       let query = supabase
         .from('sns_reviews')
         .select(`
-          id, rating, score, visited_date, content, created_at, visibility, status,
+          id, rating, score, visited_date, content, created_at, visibility, status, reply_content, reply_created_at,
           reviewer_id, target_cast_id,
           sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
         `)
-        .eq('status', 'pending')
+        .eq('status', activeTab)
         .order('created_at', { ascending: false });
 
       // 店舗の場合は、自店舗のキャストへの口コミのみを取得する
@@ -107,6 +112,13 @@ export default function MypageReviewsPage() {
         }));
         
         setReviews(enrichedReviews);
+        
+        // Reply Inputsの初期化
+        const newReplyInputs: Record<string, string> = {};
+        enrichedReviews.forEach(r => {
+           if (r.reply_content) newReplyInputs[r.id] = r.reply_content;
+        });
+        setReplyInputs(newReplyInputs);
       }
     } catch (err) {
       console.error(err);
@@ -128,13 +140,14 @@ export default function MypageReviewsPage() {
         .select();
 
       if (error || !updatedData || updatedData.length === 0) {
-        alert("更新に失敗しました。権限がありません。\n（運営アカウントの更新権限（RLS）が設定されていない可能性があります）");
+        setMessageModal({ isOpen: true, message: "更新に失敗しました。権限がありません。\n（運営アカウントの更新権限（RLS）が設定されていない可能性があります）" });
         console.error(error || "RLSにより更新がブロックされました");
+        setConfirmModal({ isOpen: false, reviewId: null, newStatus: null });
         return;
       }
 
-      // 承認時の追加処理: ポイント付与と自動通知メッセージ送信
-      if (newStatus === 'approved') {
+      // 承認時の追加処理: ポイント付与と自動通知メッセージ送信 (pending -> approvedの場合のみ)
+      if (newStatus === 'approved' && activeTab === 'pending') {
         try {
           // ポイント付与 (5ポイント)
           await supabase.rpc('add_review_points', { p_user_id: targetReview.reviewer_id, p_points: 5 });
@@ -143,7 +156,7 @@ export default function MypageReviewsPage() {
           await supabase.from('sns_messages').insert({
             sender_id: user.id,
             receiver_id: targetReview.reviewer_id,
-            content: `【自動通知】\nご来店および口コミのご投稿ありがとうございます。\n先ほど口コミが審査を通過し、5ポイントが付与されました！\n引き続きよろしくお願いいたします。`,
+            content: `【自動通知】\nご来店および口コミのご投稿ありがとうございます。\n先ほど、以下の口コミが審査を通過し、5ポイントが付与されました！\n引き続きよろしくお願いいたします。\n\n[REVIEW:${targetReview.id}]口コミはこちら`,
             is_read: false
           });
         } catch (postApproveErr) {
@@ -152,11 +165,40 @@ export default function MypageReviewsPage() {
       }
 
       setReviews(prev => prev.filter(r => r.id !== reviewId));
+      setMessageModal({ isOpen: true, message: "ステータスを更新しました。" });
     } catch (err) {
       console.error(err);
-      alert("エラーが発生しました");
+      setMessageModal({ isOpen: true, message: "エラーが発生しました" });
     } finally {
       setConfirmModal({ isOpen: false, reviewId: null, newStatus: null });
+    }
+  };
+
+  const submitReply = async (reviewId: string) => {
+    const text = replyInputs[reviewId]?.trim();
+    if (!text) return;
+    
+    setIsSubmittingReply(prev => ({...prev, [reviewId]: true}));
+    try {
+       const { error } = await supabase
+         .from('sns_reviews')
+         .update({ 
+            reply_content: text, 
+            reply_created_at: new Date().toISOString() 
+         })
+         .eq('id', reviewId);
+         
+       if (error) {
+          setMessageModal({ isOpen: true, message: "返信の保存に失敗しました。" });
+       } else {
+          setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, reply_content: text } : r));
+          setMessageModal({ isOpen: true, message: "返信を保存しました。" });
+       }
+    } catch (e) {
+       console.error(e);
+       setMessageModal({ isOpen: true, message: "エラーが発生しました" });
+    } finally {
+       setIsSubmittingReply(prev => ({...prev, [reviewId]: false}));
     }
   };
 
@@ -177,9 +219,33 @@ export default function MypageReviewsPage() {
         <h1 className="text-sm font-bold tracking-widest uppercase">口コミ審査</h1>
       </header>
 
+      {/* Tabs */}
+      <div className="bg-white border-b border-[#E5E5E5] flex">
+        <button 
+          onClick={() => setActiveTab('pending')}
+          className={`flex-1 py-4 text-xs font-bold tracking-widest transition-colors ${activeTab === 'pending' ? 'border-b-2 border-black text-black' : 'text-[#777]'}`}
+        >
+          審査待ち
+        </button>
+        <button 
+          onClick={() => setActiveTab('approved')}
+          className={`flex-1 py-4 text-xs font-bold tracking-widest transition-colors ${activeTab === 'approved' ? 'border-b-2 border-black text-black' : 'text-[#777]'}`}
+        >
+          承認済み
+        </button>
+        <button 
+          onClick={() => setActiveTab('rejected')}
+          className={`flex-1 py-4 text-xs font-bold tracking-widest transition-colors ${activeTab === 'rejected' ? 'border-b-2 border-black text-black' : 'text-[#777]'}`}
+        >
+          非表示
+        </button>
+      </div>
+
       <main className="p-6">
         <div className="mb-6 border-b border-[#E5E5E5] pb-4">
-          <p className="text-xs text-[#777] tracking-widest">承認待ちの口コミ一覧</p>
+          <p className="text-xs text-[#777] tracking-widest">
+            {activeTab === 'pending' ? '承認待ちの口コミ一覧' : (activeTab === 'approved' ? '承認済みの口コミ一覧（返信・非表示）' : '非表示にされた口コミ一覧')}
+          </p>
         </div>
 
         {isFetching ? (
@@ -188,7 +254,7 @@ export default function MypageReviewsPage() {
           </div>
         ) : reviews.length === 0 ? (
           <div className="bg-white border border-[#E5E5E5] p-10 text-center">
-            <p className="text-xs text-[#777] tracking-widest">現在、承認待ちの口コミはありません。</p>
+            <p className="text-xs text-[#777] tracking-widest">該当する口コミはありません。</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -267,21 +333,65 @@ export default function MypageReviewsPage() {
                   </div>
                 </div>
 
+                {activeTab === 'approved' && (
+                  <div className="mb-6 bg-[#FAFAFA] border border-[#E5E5E5] p-4">
+                     <div className="flex items-center gap-2 mb-2 text-[#777]">
+                        <MessageCircle size={14} />
+                        <span className="text-[10px] font-bold tracking-widest uppercase">店舗からの返信</span>
+                     </div>
+                     <textarea
+                        value={replyInputs[review.id] || ''}
+                        onChange={(e) => setReplyInputs(prev => ({...prev, [review.id]: e.target.value}))}
+                        placeholder="口コミへの返信を入力..."
+                        className="w-full text-xs p-3 border border-[#E5E5E5] focus:border-black outline-none resize-none h-20 mb-2"
+                     />
+                     <div className="flex justify-end">
+                        <button 
+                           onClick={() => submitReply(review.id)}
+                           disabled={isSubmittingReply[review.id]}
+                           className="px-4 py-2 bg-black text-white text-[10px] tracking-widest font-bold disabled:bg-[#ccc]"
+                        >
+                           {isSubmittingReply[review.id] ? '保存中...' : (review.reply_content ? '返信を更新' : '返信を保存')}
+                        </button>
+                     </div>
+                  </div>
+                )}
+
                 <div className="flex gap-4">
-                  <button 
-                    onClick={() => openConfirmModal(review.id, 'rejected')}
-                    className="flex-1 py-3 border border-[#E5E5E5] bg-white text-[#777] hover:bg-[#F9F9F9] hover:text-black transition-colors flex items-center justify-center gap-2 text-xs tracking-widest font-bold"
-                  >
-                    <X size={16} />
-                    非承認
-                  </button>
-                  <button 
-                    onClick={() => openConfirmModal(review.id, 'approved')}
-                    className="flex-1 py-3 border border-black bg-black text-white hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-2 text-xs tracking-widest font-bold"
-                  >
-                    <Check size={16} />
-                    承認する
-                  </button>
+                  {activeTab === 'pending' ? (
+                     <>
+                      <button 
+                        onClick={() => openConfirmModal(review.id, 'rejected')}
+                        className="flex-1 py-3 border border-[#E5E5E5] bg-white text-[#777] hover:bg-[#F9F9F9] hover:text-black transition-colors flex items-center justify-center gap-2 text-xs tracking-widest font-bold"
+                      >
+                        <X size={16} />
+                        非承認
+                      </button>
+                      <button 
+                        onClick={() => openConfirmModal(review.id, 'approved')}
+                        className="flex-1 py-3 border border-black bg-black text-white hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-2 text-xs tracking-widest font-bold"
+                      >
+                        <Check size={16} />
+                        承認する
+                      </button>
+                     </>
+                  ) : activeTab === 'approved' ? (
+                     <button 
+                        onClick={() => openConfirmModal(review.id, 'rejected')}
+                        className="flex-1 py-3 border border-[#E5E5E5] bg-white text-[#E02424] hover:bg-[#F9F9F9] transition-colors flex items-center justify-center gap-2 text-xs tracking-widest font-bold"
+                      >
+                        <X size={16} />
+                        非表示にする (削除)
+                      </button>
+                  ) : (
+                     <button 
+                        onClick={() => openConfirmModal(review.id, 'approved')}
+                        className="flex-1 py-3 border border-black bg-black text-white hover:bg-[#333] transition-colors flex items-center justify-center gap-2 text-xs tracking-widest font-bold"
+                      >
+                        <Check size={16} />
+                        再表示する (承認)
+                      </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -291,15 +401,15 @@ export default function MypageReviewsPage() {
 
       {/* カスタム確認モーダル */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm border border-[#E5E5E5] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <h3 className="text-sm font-bold tracking-widest text-center mb-4">
-              {confirmModal.newStatus === 'approved' ? '口コミを承認しますか？' : '口コミを非承認にしますか？'}
+              {confirmModal.newStatus === 'approved' ? (activeTab === 'rejected' ? '口コミを再表示しますか？' : '口コミを承認しますか？') : (activeTab === 'pending' ? '口コミを非承認にしますか？' : '口コミを非表示にしますか？')}
             </h3>
-            <p className="text-xs text-[#777777] text-center mb-6 leading-relaxed">
+            <p className="text-xs text-[#777777] text-center mb-6 leading-relaxed whitespace-pre-wrap">
               {confirmModal.newStatus === 'approved' 
-                ? '承認すると、キャストのプロフィールに公開され、ユーザーにポイントが付与されます。' 
-                : '非承認にすると、この口コミは削除され公開されません。'}
+                ? (activeTab === 'rejected' ? '再表示すると、再びキャストのプロフィールに公開されます。' : '承認すると、キャストのプロフィールに公開され、ユーザーにポイントが付与されます。')
+                : '非承認（非表示）にすると、この口コミは公開されなくなります。'}
             </p>
             <div className="flex gap-3">
               <button
@@ -314,12 +424,29 @@ export default function MypageReviewsPage() {
                   confirmModal.newStatus === 'approved' ? 'bg-black hover:bg-black/80' : 'bg-[#E02424] hover:bg-[#E02424]/90'
                 }`}
               >
-                {confirmModal.newStatus === 'approved' ? '承認する' : '非承認にする'}
+                {confirmModal.newStatus === 'approved' ? (activeTab === 'rejected' ? '再表示する' : '承認する') : '非表示にする'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* カスタムメッセージモーダル (アラートの代わり) */}
+      {messageModal.isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm border border-[#E5E5E5] p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+             <h3 className="text-sm font-bold tracking-widest mb-4">確認</h3>
+             <p className="text-xs text-[#333] mb-6 whitespace-pre-wrap leading-relaxed">{messageModal.message}</p>
+             <button
+               onClick={() => setMessageModal({ isOpen: false, message: "" })}
+               className="w-full py-3 bg-black text-white text-xs tracking-widest font-bold hover:bg-[#333] transition-colors"
+             >
+               閉じる
+             </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

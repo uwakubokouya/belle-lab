@@ -80,64 +80,7 @@ export default function ReviewModal({ isOpen, onClose, targetCastId, castName, o
       console.error("口コミ投稿エラー:", error);
       setErrorMsg("エラーが発生しました。もう一度お試しください。");
     } else {
-      // 店舗への通知
-      try {
-        let targetStoreId = null;
-        let storeSnsProfileId = null;
-        
-        // 1. 口コミ対象キャストの所属店舗(store_id)を特定する
-        const { data: profileData } = await supabase.from('sns_profiles').select('store_id').eq('id', targetCastId).maybeSingle();
-        if (profileData?.store_id) {
-            targetStoreId = profileData.store_id;
-        } else {
-            const { data: castData } = await supabase.from('casts').select('store_id').eq('id', targetCastId).maybeSingle();
-            if (castData?.store_id) {
-                targetStoreId = castData.store_id;
-            }
-        }
-
-        // 2. 通知先を決定する
-        let notificationTargetId = null;
-
-        if (visibility === 'secret') {
-            // VIP口コミは運営（admin/system）に通知
-            const { data: adminProfile } = await supabase.from('sns_profiles')
-                .select('id')
-                .in('role', ['admin', 'system'])
-                .is('store_id', null)
-                .limit(1)
-                .maybeSingle();
-                
-            if (adminProfile?.id) {
-                notificationTargetId = adminProfile.id;
-            }
-        } else {
-            // 通常口コミは店舗に通知
-            if (targetStoreId) {
-                const { data: storeProfile } = await supabase.from('sns_profiles')
-                    .select('id')
-                    .eq('store_id', targetStoreId)
-                    .eq('role', 'store')
-                    .maybeSingle();
-                    
-                if (storeProfile?.id) {
-                    notificationTargetId = storeProfile.id;
-                }
-            }
-        }
-
-        // 3. 通知を発行
-        if (notificationTargetId) {
-          await supabase.from('sns_notifications').insert({
-            user_id: notificationTargetId,
-            title: visibility === 'secret' ? 'VIP限定の新しい口コミ' : '新しい口コミ',
-            content: `${castName}さん宛に新しい口コミが投稿されました。審査画面から確認して承認を行ってください。`,
-            type: '重要'
-          });
-        }
-      } catch (notifErr) {
-        console.error("店舗通知エラー:", notifErr);
-      }
+      // 店舗への通知（お知らせへの送信は廃止し、マイページの専用バッジのみで通知するよう変更）
 
       setShowConfirm(false);
       setShowSuccessModal(true);

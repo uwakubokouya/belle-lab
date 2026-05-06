@@ -2,7 +2,7 @@
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Send, MoreHorizontal, Ban, BellOff, Flag, User as UserIcon, Pencil, Trash2, Heart, Lock, Calendar, X, HelpCircle } from 'lucide-react';
+import { ChevronLeft, Send, MoreHorizontal, Ban, BellOff, Flag, User as UserIcon, Pencil, Trash2, Heart, Lock, Calendar, X, HelpCircle, Star } from 'lucide-react';
 import { useUser } from '@/providers/UserProvider';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -18,6 +18,69 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
   const [isEditingName, setIsEditingName] = useState(false);
   const [customName, setCustomName] = useState("");
   const [partnerProfile, setPartnerProfile] = useState<{name: string, avatar_url: string | null, bio?: string, age_group?: string, role?: string, is_vip?: boolean} | null>(null);
+  
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [selectedReviewData, setSelectedReviewData] = useState<any>(null);
+  const [isLoadingReview, setIsLoadingReview] = useState(false);
+
+  const handleOpenReview = async (reviewId: string) => {
+    setSelectedReviewId(reviewId);
+    setIsLoadingReview(true);
+    try {
+      const { data: reviewData, error } = await supabase.from('sns_reviews').select('*').eq('id', reviewId).maybeSingle();
+      if (reviewData) {
+          let castName = "不明";
+          const { data: profile } = await supabase.from('sns_profiles').select('name').eq('id', reviewData.target_cast_id).maybeSingle();
+          if (profile?.name) {
+              castName = profile.name;
+          } else {
+              const { data: legacyCast } = await supabase.from('casts').select('name').eq('id', reviewData.target_cast_id).maybeSingle();
+              if (legacyCast?.name) {
+                  castName = legacyCast.name;
+              }
+          }
+          setSelectedReviewData({ ...reviewData, casts: { name: castName } });
+      } else {
+          setSelectedReviewData(null);
+          if (error) console.error(error);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingReview(false);
+    }
+  };
+
+  const renderMessageContent = (content: string) => {
+    if (!content) return null;
+    
+    if (content.startsWith('[SYSTEM_LIKE]')) {
+      return <><Heart size={14} className="fill-[#E02424] text-[#E02424] mr-2" /> {content.replace('[SYSTEM_LIKE]', '')}</>;
+    }
+    
+    const reviewPattern = /\[REVIEW:([0-9a-fA-F-]+)\]/;
+    const match = content.match(reviewPattern);
+    
+    if (match) {
+       const reviewId = match[1];
+       const before = content.substring(0, match.index);
+       const after = content.substring(match.index! + match[0].length);
+       
+       return (
+          <>
+            {before}
+            <button 
+              onClick={() => handleOpenReview(reviewId)}
+              className="text-[#D4AF37] font-bold inline-flex items-center gap-1 hover:opacity-70 transition-opacity underline underline-offset-4 decoration-[0.5px] mt-2"
+            >
+              <Star size={12} className="fill-[#D4AF37]" /> {after || "口コミはこちら"}
+            </button>
+          </>
+       );
+    }
+
+    return content;
+  };
   const [nextShift, setNextShift] = useState<string | null>(null);
   const [unsendCandidate, setUnsendCandidate] = useState<string | null>(null);
 
@@ -462,10 +525,7 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
                             ? 'bg-[#FFF0F5] text-[#E02424] border-[#FFC0CB] flex items-center justify-center font-bold tracking-widest'
                             : 'bg-white text-black border-[#E5E5E5]'
                     }`}>
-                      {msg.content?.startsWith('[SYSTEM_LIKE]') 
-                         ? <><Heart size={14} className="fill-[#E02424] text-[#E02424] mr-2" /> {msg.content.replace('[SYSTEM_LIKE]', '')}</>
-                         : msg.content
-                      }
+                      {renderMessageContent(msg.content)}
                     </div>
 
                     {/* For PARTNER: Time */}
@@ -863,6 +923,66 @@ export default function MessageRoomPage({ params }: { params: Promise<{ id: stri
                     </p>
                  </div>
              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Review Detail Modal */}
+      {selectedReviewId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedReviewId(null)}>
+           <div className="bg-white w-full max-w-sm p-6 border border-[#E5E5E5] flex flex-col relative shadow-sm" onClick={e => e.stopPropagation()}>
+             <button 
+               onClick={() => setSelectedReviewId(null)}
+               className="absolute top-4 right-4 text-[#777777] hover:text-black transition-colors"
+             >
+               <X size={20} className="stroke-[1.5]" />
+             </button>
+
+             <h3 className="text-sm font-bold tracking-widest mb-6 uppercase text-center text-black border-b border-[#E5E5E5] pb-4">
+               口コミ詳細
+             </h3>
+
+             {isLoadingReview ? (
+               <div className="py-10 text-center text-xs text-[#777777] tracking-widest">
+                 読み込み中...
+               </div>
+             ) : selectedReviewData ? (
+               <div className="space-y-4">
+                 <div className="flex justify-between items-center pb-2 border-b border-[#E5E5E5]">
+                   <span className="text-[10px] text-[#777777] tracking-widest uppercase">対象キャスト</span>
+                   <span className="text-xs font-bold">{selectedReviewData.casts?.name || "不明"}</span>
+                 </div>
+                 <div className="flex justify-between items-center pb-2 border-b border-[#E5E5E5]">
+                   <span className="text-[10px] text-[#777777] tracking-widest uppercase">訪問日</span>
+                   <span className="text-xs font-bold">{selectedReviewData.visited_date}</span>
+                 </div>
+                 <div className="flex justify-between items-center pb-2 border-b border-[#E5E5E5]">
+                   <span className="text-[10px] text-[#777777] tracking-widest uppercase">評価</span>
+                   <span className="flex">
+                     {[1, 2, 3, 4, 5].map((s) => (
+                       <Star key={s} size={14} className={s <= selectedReviewData.rating ? 'fill-black text-black' : 'fill-transparent text-[#E5E5E5]'} />
+                     ))}
+                   </span>
+                 </div>
+                 <div className="pt-2">
+                   <span className="text-[10px] text-[#777777] tracking-widest uppercase block mb-2">口コミ内容</span>
+                   <p className="text-xs text-[#333333] whitespace-pre-wrap leading-relaxed border p-3 border-[#E5E5E5] bg-[#F9F9F9] min-h-[80px]">
+                     {selectedReviewData.content}
+                   </p>
+                 </div>
+               </div>
+             ) : (
+               <div className="py-10 text-center text-xs text-[#E02424] tracking-widest">
+                 口コミが見つかりません
+               </div>
+             )}
+             
+             <button 
+               onClick={() => setSelectedReviewId(null)}
+               className="w-full py-4 mt-6 text-xs tracking-widest flex items-center justify-center bg-black text-white hover:bg-[#333333] transition-colors"
+             >
+               閉じる
+             </button>
            </div>
         </div>
       )}

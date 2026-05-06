@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Home, Search, SquarePen, User, Menu, Bell, MessageSquare, BarChart3 } from 'lucide-react';
 import { useUser } from '@/providers/UserProvider';
 import { usePathname, useParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function BottomNav() {
   const { user, hasUnreadNotifications, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints } = useUser();
@@ -13,6 +14,52 @@ export default function BottomNav() {
   const prefecture = params?.prefecture as string | undefined;
   
   const [savedPref, setSavedPref] = React.useState<string | null>(null);
+  const [hasPendingReviews, setHasPendingReviews] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!user) return;
+    const fetchPendingCount = async () => {
+        if (user.role === 'store') {
+            let myStoreId = null;
+            const { data: snsProfile } = await supabase.from('sns_profiles').select('store_id').eq('id', user.id).maybeSingle();
+            if (snsProfile?.store_id) myStoreId = snsProfile.store_id;
+            else if (user.phone) {
+                const { data: dbProfile } = await supabase.from('profiles').select('store_id').eq('username', user.phone).eq('role', 'admin').maybeSingle();
+                if (dbProfile?.store_id) myStoreId = dbProfile.store_id;
+            }
+
+            if (myStoreId) {
+                const { data: castsInStore } = await supabase.from('sns_profiles').select('id').eq('store_id', myStoreId);
+                const castIds = castsInStore ? castsInStore.map(c => c.id) : [];
+                const { data: legacyCasts } = await supabase.from('casts').select('id').eq('store_id', myStoreId);
+                if (legacyCasts) legacyCasts.forEach(lc => castIds.push(lc.id));
+
+                if (castIds.length > 0) {
+                   const { count } = await supabase.from('sns_reviews').select('*', { count: 'exact', head: true })
+                      .eq('status', 'pending').eq('visibility', 'public').in('target_cast_id', castIds);
+                   setHasPendingReviews((count || 0) > 0);
+                } else {
+                   setHasPendingReviews(false);
+                }
+            }
+        } else if (user.is_admin && user.role !== 'store') {
+            const { count } = await supabase.from('sns_reviews').select('*', { count: 'exact', head: true })
+               .eq('status', 'pending');
+            setHasPendingReviews((count || 0) > 0);
+        }
+    };
+    fetchPendingCount();
+
+    const channel = supabase.channel('bottom_nav_reviews')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sns_reviews' }, () => {
+         fetchPendingCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   React.useEffect(() => {
     if (prefecture) {
@@ -95,7 +142,7 @@ export default function BottomNav() {
       <Link href="/mypage" className="flex flex-col items-center gap-1 hover:text-black transition-colors relative">
         <div className="relative">
           <Menu size={20} className="stroke-2" />
-          {(hasUnreadNotifications || (role === 'cast' && hasUnreadFootprints)) && (
+          {(hasUnreadNotifications || (role === 'cast' && hasUnreadFootprints) || hasPendingReviews) && (
             <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
               <Bell size={12} className="text-[#E02424] fill-[#E02424] animate-ring origin-top" />
             </div>
