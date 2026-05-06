@@ -49,7 +49,7 @@ export default function AgeGuard({ children }: { children: React.ReactNode }) {
                   onClick={handleEnter}
                   className="w-full bg-black text-white py-4 text-xs tracking-widest font-bold tracking-[0.2em]"
                 >
-                  YES (18歳以上・入店する)
+                  YES (18歳以上・入場する)
                 </button>
                 <button 
                   onClick={handleExit}
