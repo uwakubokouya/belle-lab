@@ -49,9 +49,11 @@ interface UserContextType {
   hasUnreadMessages: boolean;
   hasUnreadFeedbacks: boolean;
   hasUnreadFootprints: boolean;
+  hasUnreadReviews: boolean;
   checkUnreadFootprints: () => Promise<void>;
   markNotificationsAsRead: () => void;
   markLikesAsRead: () => Promise<void>;
+  markReviewsAsRead: () => Promise<void>;
   refreshUnreadFeedbacks: () => Promise<void>;
   isTestMode: boolean;
 }
@@ -67,6 +69,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [hasUnreadFeedbacks, setHasUnreadFeedbacks] = useState(false);
   const [hasUnreadFootprints, setHasUnreadFootprints] = useState(false);
+  const [hasUnreadReviews, setHasUnreadReviews] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
   const router = useRouter();
 
@@ -92,6 +95,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
        } else {
            setHasUnreadFootprints(false);
        }
+    };
+
+    const checkUnreadReviews = async (userId: string) => {
+       const { count } = await supabase
+          .from('sns_reviews')
+          .select('*', { count: 'exact', head: true })
+          .eq('target_cast_id', userId)
+          .eq('status', 'approved')
+          .eq('is_read_by_cast', false);
+       
+       setHasUnreadReviews(!!count && count > 0);
     };
 
   useEffect(() => {
@@ -219,6 +233,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
            checkUnreadNotifications(session.user.id);
            checkUnreadMessages(session.user.id);
            checkUnreadFootprints(session.user.id);
+           checkUnreadReviews(session.user.id);
        }
     });
 
@@ -232,11 +247,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       })
       .subscribe();
 
+    const reviewsChannel = supabase.channel('public:sns_reviews')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sns_reviews' }, () => {
+         supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user.id) checkUnreadReviews(session.user.id);
+         });
+      })
+      .subscribe();
+
     return () => {
       authListener.subscription.unsubscribe();
       supabase.removeChannel(notificationChannel);
       supabase.removeChannel(messageChannel);
       supabase.removeChannel(footprintChannel);
+      supabase.removeChannel(reviewsChannel);
     };
   }, []);
 
@@ -392,6 +416,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
      }
   };
 
+  const markReviewsAsRead = async () => {
+     if (!user?.id) return;
+     try {
+         await supabase.from('sns_reviews')
+            .update({ is_read_by_cast: true })
+            .eq('target_cast_id', user.id)
+            .eq('status', 'approved')
+            .eq('is_read_by_cast', false);
+         setHasUnreadReviews(false);
+     } catch (e) {
+         console.error(e);
+     }
+  };
+
   const refreshUnreadFeedbacks = async () => {
      if (!user?.is_admin) return;
      const { count } = await supabase
@@ -403,7 +441,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider value={{ 
-      user, logout, isMounted, isLoading, refreshProfile, hasUnreadNotifications, hasUnreadLikes, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints, checkUnreadFootprints: async () => { if (user?.id) await checkUnreadFootprints(user.id); }, markNotificationsAsRead, markLikesAsRead, refreshUnreadFeedbacks, isTestMode 
+      user, logout, isMounted, isLoading, refreshProfile, hasUnreadNotifications, hasUnreadLikes, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints, hasUnreadReviews, checkUnreadFootprints: async () => { if (user?.id) await checkUnreadFootprints(user.id); }, markNotificationsAsRead, markLikesAsRead, markReviewsAsRead, refreshUnreadFeedbacks, isTestMode 
     }}>
       {children}
     </UserContext.Provider>

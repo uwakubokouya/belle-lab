@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { Heart, MessageCircle, Clock, CalendarCheck, Lock, ArrowLeft, Play, MoreVertical, Edit, Trash2, Eye, Pin, PinOff } from 'lucide-react';
+import { Heart, MessageCircle, Clock, CalendarCheck, Lock, ArrowLeft, Play, MoreVertical, Edit, Trash2, Eye, Pin, PinOff, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/providers/UserProvider';
 import { useState, useEffect } from 'react';
@@ -364,7 +364,9 @@ export default function PostCard({
                        </div>
                   </div>
                   <div className="flex items-center gap-1 mb-2">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                       {[1, 2, 3, 4, 5].map((s) => (
+                           <Star key={s} size={10} className={s <= quotedReview.rating ? 'fill-black text-black' : 'fill-transparent text-[#E5E5E5]'} />
+                       ))}
                        <span className="text-[10px] font-bold ml-1">{quotedReview.score}点</span>
                   </div>
                   <p className="text-[11px] text-[#333333] leading-relaxed line-clamp-3">

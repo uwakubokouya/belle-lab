@@ -25,7 +25,7 @@ interface Review {
 
 export default function ReceivedReviewsPage() {
   const router = useRouter();
-  const { user, isMounted } = useUser();
+  const { user, isMounted, markReviewsAsRead } = useUser();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,6 +58,7 @@ export default function ReceivedReviewsPage() {
         if (error) throw error;
 
         if (data) {
+          markReviewsAsRead();
             setReviews(data as any);
         }
       } catch (err) {

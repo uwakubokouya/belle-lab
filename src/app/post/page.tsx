@@ -14,6 +14,7 @@ export default function PostCreationPage() {
     const [quotedReview, setQuotedReview] = useState<any>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const { user } = useUser();
     const router = useRouter();
@@ -107,6 +108,8 @@ export default function PostCreationPage() {
           console.error(err);
           setErrorMessage(err.message || "エラーが発生しました");
           setIsPosting(false);
+      } finally {
+          setShowConfirmModal(false);
       }
     };
 
@@ -129,7 +132,7 @@ export default function PostCreationPage() {
                     <span className="font-normal text-sm tracking-widest font-bold">新規投稿</span>
                 </div>
                 <button 
-                    onClick={handleSubmit}
+                    onClick={() => setShowConfirmModal(true)}
                     disabled={isPosting || (!content.trim() && images.length === 0)}
                     className="premium-btn text-[11px] font-medium tracking-widest px-6 py-2 flex items-center justify-center disabled:opacity-50 disabled:bg-[#E5E5E5] disabled:text-[#777777] disabled:border-[#E5E5E5]"
                 >
@@ -292,6 +295,86 @@ export default function PostCreationPage() {
                     <span className="font-bold">{content.length}</span> 文字
                 </div>
             </div>
+            
+            {/* Confirmation Modal */}
+            {showConfirmModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md p-6 border border-[#E5E5E5] flex flex-col items-center">
+                        <h3 className="text-sm font-bold tracking-widest mb-4 uppercase">Confirm</h3>
+                        <div className="w-full text-left mb-6 max-h-[50vh] overflow-y-auto">
+                            <p className="text-xs text-[#333333] mb-4 text-center bg-[#F9F9F9] p-4 w-full">
+                                以下の内容で投稿しますか？
+                            </p>
+                            
+                            <div className="border border-[#E5E5E5] p-4">
+                                {/* Profile mini preview */}
+                                <div className="flex items-center gap-2 mb-3">
+                                    <img src={user?.avatar_url || "/images/no-photo.jpg"} alt="Profile" className="w-6 h-6 object-cover border border-[#E5E5E5] rounded-full" />
+                                    <span className="text-[10px] font-bold tracking-widest">{user?.name || "GUEST"}</span>
+                                    <span className="text-[9px] text-[#777777] bg-[#F9F9F9] px-1.5 py-0.5 border border-[#E5E5E5]">
+                                        {postType}
+                                    </span>
+                                </div>
+                                
+                                {/* Content */}
+                                {content && (
+                                    <p className="text-[11px] text-[#333333] whitespace-pre-wrap leading-relaxed mb-3">
+                                        {content}
+                                    </p>
+                                )}
+                                
+                                {/* Images */}
+                                {images.length > 0 && (
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                        {images.map((file, i) => (
+                                            file.type.startsWith('video/') ? (
+                                                <video key={i} src={URL.createObjectURL(file)} className="w-full h-20 object-cover border border-[#E5E5E5]" muted />
+                                            ) : (
+                                                <img key={i} src={URL.createObjectURL(file)} alt="Preview" className="w-full h-20 object-cover border border-[#E5E5E5]" />
+                                            )
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {/* Quoted Review */}
+                                {quotedReview && (
+                                    <div className="border border-[#E5E5E5] bg-[#F9F9F9] p-3 mt-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <img src={quotedReview.sns_profiles?.avatar_url || "/images/no-photo.jpg"} alt="Reviewer" className="w-5 h-5 object-cover" />
+                                            <span className="text-[9px] font-bold">{quotedReview.sns_profiles?.name || "匿名"}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 mb-1">
+                                            {[1, 2, 3, 4, 5].map((s) => (
+                                                <Star key={s} size={10} className={s <= quotedReview.rating ? 'fill-black text-black' : 'fill-transparent text-[#E5E5E5]'} />
+                                            ))}
+                                            <span className="text-[9px] font-bold">{quotedReview.score}点</span>
+                                        </div>
+                                        <p className="text-[10px] text-[#555] line-clamp-2 leading-relaxed">
+                                            {quotedReview.content}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="w-full flex gap-3">
+                            <button 
+                                onClick={() => setShowConfirmModal(false)}
+                                className="flex-1 py-3 bg-[#F9F9F9] border border-[#E5E5E5] text-xs tracking-widest text-[#777777] hover:bg-[#E5E5E5] transition-colors shadow-sm"
+                            >
+                                キャンセル
+                            </button>
+                            <button 
+                                onClick={handleSubmit}
+                                disabled={isPosting}
+                                className="flex-1 py-3 bg-black text-white text-xs font-bold tracking-widest hover:bg-[#333333] transition-colors shadow-sm"
+                            >
+                                {isPosting ? "送信中..." : "投稿する"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

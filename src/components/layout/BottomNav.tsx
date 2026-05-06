@@ -7,7 +7,7 @@ import { usePathname, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function BottomNav() {
-  const { user, hasUnreadNotifications, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints } = useUser();
+  const { user, hasUnreadNotifications, hasUnreadMessages, hasUnreadFeedbacks, hasUnreadFootprints, hasUnreadReviews } = useUser();
   const role = user?.role;
   const pathname = usePathname();
   const params = useParams();
@@ -142,7 +142,7 @@ export default function BottomNav() {
       <Link href="/mypage" className="flex flex-col items-center gap-1 hover:text-black transition-colors relative">
         <div className="relative">
           <Menu size={20} className="stroke-2" />
-          {(hasUnreadNotifications || (role === 'cast' && hasUnreadFootprints) || hasPendingReviews) && (
+          {(hasUnreadNotifications || (role === 'cast' && (hasUnreadFootprints || hasUnreadReviews)) || hasPendingReviews) && (
             <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
               <Bell size={12} className="text-[#E02424] fill-[#E02424] animate-ring origin-top" />
             </div>

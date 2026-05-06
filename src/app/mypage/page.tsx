@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function MyPage() {
-  const { user, logout, hasUnreadNotifications, hasUnreadFootprints } = useUser();
+  const { user, logout, hasUnreadNotifications, hasUnreadFootprints, hasUnreadReviews } = useUser();
   const [isGachaLoading, setIsGachaLoading] = useState(false);
   const [gachaModalOpen, setGachaModalOpen] = useState(false);
   const [gachaState, setGachaState] = useState<'spinning' | 'result' | 'error' | 'already_claimed'>('spinning');
@@ -244,9 +244,14 @@ export default function MyPage() {
             </Link>
           )}
           {user?.role === 'cast' && (
-            <Link href="/mypage/received-reviews" className="w-full px-6 py-4 flex items-center justify-between border-b border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors">
+            <Link href="/mypage/received-reviews" className="w-full px-6 py-4 flex items-center justify-between border-b border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors relative">
               <div className="flex items-center gap-3">
-                <Star size={18} className="stroke-[1.5]" />
+                <div className="relative">
+                  <Star size={18} className="stroke-[1.5]" />
+                  {hasUnreadReviews && (
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+                  )}
+                </div>
                 <span className="text-xs tracking-widest">自分への口コミ</span>
               </div>
               <ChevronRight size={16} className="text-[#777777]" />
