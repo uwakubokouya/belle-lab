@@ -38,7 +38,7 @@ export default function MyPage() {
                    setPendingReviewCount(count || 0);
                 }
             }
-         } else if (user.is_admin && user.role !== 'store') {
+         } else if (user.is_admin && (user.role as string) !== 'store') {
             const { count } = await supabase.from('sns_reviews').select('*', { count: 'exact', head: true })
                .eq('status', 'pending');
             setPendingReviewCount(count || 0);
