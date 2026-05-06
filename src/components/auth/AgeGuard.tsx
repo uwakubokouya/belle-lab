@@ -30,8 +30,9 @@ export default function AgeGuard({ children }: { children: React.ReactNode }) {
 
   if (!isVerified) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-white text-black flex flex-col items-center justify-center pb-24 p-6 font-light overflow-y-auto">
-        <div className="max-w-sm w-full text-center space-y-10">
+      <>
+        <div className="fixed inset-0 z-[9999] bg-white text-black flex flex-col items-center justify-center pb-24 p-6 font-light overflow-y-auto">
+          <div className="max-w-sm w-full text-center space-y-10">
             <img src="/images/logo.png" alt="HimeMatch" className="w-80 md:w-96 h-auto object-contain mx-auto mb-6" />
             
             <div className="space-y-4">
@@ -86,7 +87,7 @@ export default function AgeGuard({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-      </div>
+      </>
     );
   }
 
