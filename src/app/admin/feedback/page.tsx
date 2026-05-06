@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MessageSquare, Check, Mail, Phone, Clock, X, CheckCircle2, Copy } from "lucide-react";
+import { ChevronLeft, MessageSquare, Check, Mail, Phone, Clock, X, CheckCircle2, Copy, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/providers/UserProvider";
 
@@ -87,6 +87,20 @@ export default function AdminFeedbackPage() {
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  const deleteReportedReview = async (reviewId: string, feedbackId: string) => {
+    if (!window.confirm("この通報された口コミを本当に削除しますか？\nこの操作は元に戻せません。")) return;
+
+    const { error: deleteError } = await supabase.from('sns_reviews').delete().eq('id', reviewId);
+    if (deleteError) {
+      alert("口コミの削除に失敗しました。");
+      return;
+    }
+
+    await supabase.from('sns_feedbacks').update({ status: 'read' }).eq('id', feedbackId);
+    setFeedbacks(prev => prev.map(f => f.id === feedbackId ? { ...f, status: 'read' } : f));
+    alert("口コミを削除し、この通報を既読にしました。");
   };
 
   // Restored functions
@@ -225,9 +239,27 @@ export default function AdminFeedbackPage() {
                   </div>
                 </div>
                 <div className="border-t border-[#E5E5E5] pt-4 mt-2">
-                  <p className="text-sm leading-relaxed tracking-wider whitespace-pre-wrap font-light">
+                  <p className="text-sm leading-relaxed tracking-wider whitespace-pre-wrap font-light mb-4">
                     {fb.content}
                   </p>
+                  {fb.content.includes('[口コミ通報]') && (
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          const match = fb.content.match(/レビューID:\s*([a-f0-9\-]{36})/);
+                          if (match && match[1]) {
+                            deleteReportedReview(match[1], fb.id);
+                          } else {
+                            alert("レビューIDが見つかりませんでした。");
+                          }
+                        }}
+                        className="px-4 py-2 bg-[#E02424] text-white text-[10px] tracking-widest font-bold hover:bg-[#C81E1E] transition-colors flex items-center gap-2"
+                      >
+                        <Trash2 size={14} className="stroke-[2]" />
+                        この口コミを削除する
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
