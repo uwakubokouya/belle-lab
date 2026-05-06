@@ -66,6 +66,12 @@ export default function AreaSelectionPage() {
     { name: "九州・沖縄", prefectures: ["福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"] }
   ];
 
+  // ローディング中、または確実にリダイレクトされる条件の場合はUIを描画せずに待機
+  if (isLoading || isTestMode || user?.role === 'cast' || user?.role === 'store') {
+    return <div className="min-h-screen bg-white" />;
+  }
+
+
   return (
     <div className="min-h-screen bg-white text-black font-light pb-20">
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md">
