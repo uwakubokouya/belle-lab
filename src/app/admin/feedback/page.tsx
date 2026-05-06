@@ -31,6 +31,7 @@ export default function AdminFeedbackPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [resultModal, setResultModal] = useState<{ isOpen: boolean; type: 'success' | 'error'; message: string }>({ isOpen: false, type: 'success', message: "" });
+  const [deleteReviewConfirm, setDeleteReviewConfirm] = useState<{ isOpen: boolean; reviewId: string | null; feedbackId: string | null }>({ isOpen: false, reviewId: null, feedbackId: null });
 
   useEffect(() => {
     if (!user?.is_admin) {
@@ -89,18 +90,25 @@ export default function AdminFeedbackPage() {
     return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  const deleteReportedReview = async (reviewId: string, feedbackId: string) => {
-    if (!window.confirm("この通報された口コミを本当に削除しますか？\nこの操作は元に戻せません。")) return;
+  const requestDeleteReportedReview = (reviewId: string, feedbackId: string) => {
+    setDeleteReviewConfirm({ isOpen: true, reviewId, feedbackId });
+  };
+
+  const executeDeleteReportedReview = async () => {
+    const { reviewId, feedbackId } = deleteReviewConfirm;
+    if (!reviewId || !feedbackId) return;
+
+    setDeleteReviewConfirm({ isOpen: false, reviewId: null, feedbackId: null });
 
     const { error: deleteError } = await supabase.from('sns_reviews').delete().eq('id', reviewId);
     if (deleteError) {
-      alert("口コミの削除に失敗しました。");
+      setResultModal({ isOpen: true, type: 'error', message: '口コミの削除に失敗しました。' });
       return;
     }
 
     await supabase.from('sns_feedbacks').update({ status: 'read' }).eq('id', feedbackId);
     setFeedbacks(prev => prev.map(f => f.id === feedbackId ? { ...f, status: 'read' } : f));
-    alert("口コミを削除し、この通報を既読にしました。");
+    setResultModal({ isOpen: true, type: 'success', message: '口コミを削除し、この通報を既読にしました。' });
   };
 
   // Restored functions
@@ -248,9 +256,9 @@ export default function AdminFeedbackPage() {
                         onClick={() => {
                           const match = fb.content.match(/レビューID:\s*([a-f0-9\-]{36})/);
                           if (match && match[1]) {
-                            deleteReportedReview(match[1], fb.id);
+                            requestDeleteReportedReview(match[1], fb.id);
                           } else {
-                            alert("レビューIDが見つかりませんでした。");
+                            setResultModal({ isOpen: true, type: 'error', message: "レビューIDが見つかりませんでした。" });
                           }
                         }}
                         className="px-4 py-2 bg-[#E02424] text-white text-[10px] tracking-widest font-bold hover:bg-[#C81E1E] transition-colors flex items-center gap-2"
@@ -359,6 +367,39 @@ export default function AdminFeedbackPage() {
                   className="flex-1 py-3 bg-[#E02424] text-white text-[11px] font-bold tracking-widest shadow-md hover:bg-[#C81E1E] transition-colors"
                 >
                   初期化する
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Review Modal */}
+      {deleteReviewConfirm.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm border border-black shadow-2xl relative overflow-hidden">
+            <div className="p-6 text-center">
+              <h2 className="text-sm font-bold tracking-widest text-[#E02424] mb-3 flex items-center justify-center gap-2">
+                <Trash2 size={18} className="stroke-[2]" />
+                口コミ削除の確認
+              </h2>
+              <p className="text-xs text-[#333] leading-relaxed tracking-widest mb-2">
+                この通報された口コミを本当に削除しますか？
+              </p>
+              <p className="text-[10px] text-[#777] mb-6">※この操作は元に戻せません</p>
+              
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setDeleteReviewConfirm({ isOpen: false, reviewId: null, feedbackId: null })}
+                  className="flex-1 py-3 bg-[#F9F9F9] border border-[#E5E5E5] text-[#777] text-[11px] font-bold tracking-widest hover:bg-[#EEEEEE] transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button 
+                  onClick={executeDeleteReportedReview}
+                  className="flex-1 py-3 bg-[#E02424] text-white text-[11px] font-bold tracking-widest shadow-md hover:bg-[#C81E1E] transition-colors"
+                >
+                  削除する
                 </button>
               </div>
             </div>
