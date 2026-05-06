@@ -2122,7 +2122,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
              />
              <div className="flex gap-3">
                <button onClick={() => setPromptModal({isOpen: false, reviewId: null})} className="flex-1 py-3 text-xs tracking-widest border border-[#E5E5E5] hover:bg-[#F9F9F9] transition-colors">キャンセル</button>
-               <button onClick={handleReportReview} disabled={!reportReason.trim()} className="flex-1 py-3 bg-black text-white text-xs tracking-widest hover:bg-[#333] transition-colors disabled:bg-[#E5E5E5]">送信する</button>
+               <button onClick={() => promptModal.reviewId && handleReportReview(promptModal.reviewId)} disabled={!reportReason.trim()} className="flex-1 py-3 bg-black text-white text-xs tracking-widest hover:bg-[#333] transition-colors disabled:bg-[#E5E5E5]">送信する</button>
              </div>
           </div>
         </div>
