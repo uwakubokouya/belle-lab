@@ -77,11 +77,11 @@ export default function AgeGuard({ children }: { children: React.ReactNode }) {
             </button>
             
             {/* Modal Content (Image) */}
-            <div className="relative w-full max-w-md max-h-[85vh] flex items-center justify-center">
+            <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-md shadow-2xl">
               <img 
                 src="/images/ba67d821-df64-461b-ba2a-ddb18cf11c70.png" 
                 alt="Special Notice" 
-                className="w-full h-auto object-contain"
+                className="w-full h-auto block"
               />
             </div>
           </div>
