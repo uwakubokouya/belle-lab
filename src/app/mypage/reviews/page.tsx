@@ -149,14 +149,31 @@ export default function MypageReviewsPage() {
       // 承認時の追加処理: ポイント付与と自動通知メッセージ送信 (pending -> approvedの場合のみ)
       if (newStatus === 'approved' && activeTab === 'pending') {
         try {
-          // ポイント付与 (5ポイント)
-          await supabase.rpc('add_review_points', { p_user_id: targetReview.reviewer_id, p_points: 5 });
+          // キャストが新人（入店30日以内）かどうかを判定し、ポイントを振り分け
+          let pointsToAward = 5;
+          const { data: castData } = await supabase
+            .from('casts')
+            .select('join_date')
+            .eq('id', targetReview.target_cast_id)
+            .maybeSingle();
+
+          if (castData?.join_date) {
+            const joinDate = new Date(castData.join_date);
+            const nowTs = new Date();
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            if (nowTs.getTime() - joinDate.getTime() < thirtyDaysMs) {
+                pointsToAward = 10;
+            }
+          }
+
+          // ポイント付与
+          await supabase.rpc('add_review_points', { p_user_id: targetReview.reviewer_id, p_points: pointsToAward });
           
           // 自動通知メッセージを送信（送信者: 現在ログイン中の店舗アカウント sns_profiles.id）
           await supabase.from('sns_messages').insert({
             sender_id: user.id,
             receiver_id: targetReview.reviewer_id,
-            content: `【自動通知】\nご来店および口コミのご投稿ありがとうございます。\n先ほど、以下の口コミが審査を通過し、5ポイントが付与されました！\n引き続きよろしくお願いいたします。\n\n[REVIEW:${targetReview.id}]口コミはこちら`,
+            content: `【自動通知】\nご来店および口コミのご投稿ありがとうございます。\n先ほど、以下の口コミが審査を通過し、${pointsToAward}ポイントが付与されました！\n引き続きよろしくお願いいたします。\n\n[REVIEW:${targetReview.id}]口コミはこちら`,
             is_read: false
           });
         } catch (postApproveErr) {
