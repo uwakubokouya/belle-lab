@@ -120,18 +120,18 @@ export default function Home() {
 
     const { data: storeProfiles } = await storeProfilesQuery;
 
-    if (!storeProfiles || storeProfiles.length === 0) {
-      setPosts([]);
-      setIsLoading(false);
-      return;
-    }
-    const storeIds = storeProfiles.map(p => p.store_id).filter(Boolean);
-    const storeUsernames = storeProfiles.map(p => p.username).filter(Boolean);
+    const storeProfilesList = storeProfiles || [];
+    const storeIds = storeProfilesList.map(p => p.store_id).filter(Boolean);
+    const storeUsernames = storeProfilesList.map(p => p.username).filter(Boolean);
 
-    const { data: snsStoreProfiles } = await supabase
-      .from('sns_profiles')
-      .select('id, name, phone')
-      .in('phone', storeUsernames);
+    let snsStoreProfiles: any[] = [];
+    if (storeUsernames.length > 0) {
+        const { data } = await supabase
+          .from('sns_profiles')
+          .select('id, name, phone')
+          .in('phone', storeUsernames);
+        if (data) snsStoreProfiles = data;
+    }
       
     const { data: platformAdmins } = await supabase
       .from('sns_profiles')
@@ -140,7 +140,7 @@ export default function Home() {
     const platformAdminIds = platformAdmins ? platformAdmins.map(a => a.id) : [];
 
     const storeProfileMap = new Map();
-    storeProfiles.forEach(p => {
+    storeProfilesList.forEach(p => {
         storeProfileMap.set(p.store_id, p);
     });
 
@@ -153,18 +153,22 @@ export default function Home() {
     
     const storeAccountIds = snsStoreProfiles ? snsStoreProfiles.map(p => p.id) : [];
     
-    const { data: fetchedCasts } = await supabase
-      .from('casts')
-      .select('id, login_id, store_id')
-      .in('store_id', storeIds)
-      .eq('status', 'active');
+    let fetchedCasts: any[] = [];
+    if (storeIds.length > 0) {
+        const { data } = await supabase
+          .from('casts')
+          .select('id, login_id, store_id')
+          .in('store_id', storeIds)
+          .eq('status', 'active');
+        if (data) fetchedCasts = data;
+    }
       
     let activeCasts = fetchedCasts || [];
     let loginIds = activeCasts.map(c => c.login_id).filter(Boolean);
 
     let myStoreLoginIds: string[] = [];
     if (user?.role === 'store' && user.phone) {
-        let myProfile = storeProfiles.find(p => p.username === user.phone);
+        let myProfile = storeProfilesList.find(p => p.username === user.phone);
         let myStoreId = myProfile?.store_id;
 
         if (!myStoreId) {
