@@ -170,6 +170,18 @@ export default function ReservationPage({ params }: { params: Promise<{ prefectu
                 const next14DaysResults = await Promise.all(next14DaysPromises);
                 const uniqueDates = next14DaysResults.filter(Boolean) as string[];
                 setAvailableDates(uniqueDates);
+                
+                let initDate = null;
+                if (typeof window !== 'undefined') {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    initDate = urlParams.get('date');
+                }
+                
+                if (initDate && uniqueDates.includes(initDate)) {
+                    setSelectedDate(initDate);
+                    // Skip to step 2 if a valid date is provided
+                    setStep(2);
+                }
             
             setIsLoading(false);
         };

@@ -1967,7 +1967,13 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                                     <span className={isToday ? 'text-[#E02424]' : 'text-black'}>{shift.displayDate}</span>
                                 </div>
                                 <div className="w-2/3 flex items-center justify-center font-bold tracking-widest py-3">
-                                    <span className={isOff ? 'text-[#777777] font-normal' : 'text-black'}>{shift.text}</span>
+                                    {isOff ? (
+                                        <span className="text-[#777777] font-normal">{shift.text}</span>
+                                    ) : (
+                                        <Link href={`/reserve/${resolvedCastId}?date=${shift.dateStr}`} className="text-black hover:text-[#777777] transition-colors underline underline-offset-4 decoration-[#E5E5E5]">
+                                            {shift.text}
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         );
