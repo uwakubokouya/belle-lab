@@ -85,9 +85,9 @@ export default function PostCard({
   useEffect(() => {
      if (taggedCast && taggedCast.id) {
          const fetchScore = async () => {
-             const { data: revs } = await supabase.from('sns_reviews').select('score').eq('target_cast_id', taggedCast.id).eq('status', 'approved');
+             const { data: revs } = await supabase.from('sns_reviews').select('rating').eq('target_cast_id', taggedCast.id).eq('status', 'approved');
              if (revs && revs.length > 0) {
-                  const avg = revs.reduce((sum, r) => sum + (r.score || 0), 0) / revs.length;
+                  const avg = revs.reduce((sum, r) => sum + (r.rating || 0), 0) / revs.length;
                   setTaggedCastScore(avg.toFixed(1));
              }
          };
