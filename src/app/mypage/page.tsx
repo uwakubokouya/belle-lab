@@ -119,12 +119,12 @@ export default function MyPage() {
                   {user?.is_admin ? "ADMIN" : user?.role === "cast" ? "キャスト" : "お客様"}
                 </p>
                 {user?.role === 'customer' && user?.rank && (
-                  <p className={`text-[10px] tracking-widest inline-block px-2 py-0.5 border ${
-                    user.rank === 'Platinum' ? 'bg-[#E5E4E2] text-[#111] border-[#E5E4E2]' :
-                    user.rank === 'Gold' ? 'bg-[#FFD700] text-[#111] border-[#FFD700]' :
-                    user.rank === 'Silver' ? 'bg-[#C0C0C0] text-[#111] border-[#C0C0C0]' :
-                    user.rank === 'Bronze' ? 'bg-[#CD7F32] text-white border-[#CD7F32]' :
-                    'bg-[#708090] text-white border-[#708090]'
+                  <p className={`text-[10px] tracking-[0.2em] font-bold inline-block px-3 py-0.5 border shadow-sm ${
+                    user.rank === 'Platinum' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#E5E4E2] border-[#E5E4E2]' :
+                    user.rank === 'Gold' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#D4AF37] border-[#D4AF37]' :
+                    user.rank === 'Silver' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#C0C0C0] border-[#C0C0C0]' :
+                    user.rank === 'Bronze' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#CD7F32] border-[#CD7F32]' :
+                    'bg-[#F9F9F9] text-[#555] border-[#E5E5E5]'
                   }`}>
                     {user.rank}
                   </p>

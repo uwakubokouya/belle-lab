@@ -1414,12 +1414,12 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                     </div>
                     {/* ランクバッジをアイコンの下（下端中央に重ねる）に配置 */}
                     {profileData.role === 'customer' && profileData.rank && (
-                        <div className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 text-[8px] font-bold tracking-widest uppercase border shadow-sm whitespace-nowrap z-30 ${
-                            profileData.rank === 'Platinum' ? 'bg-[#E5E4E2] text-[#111] border-[#E5E4E2]' :
-                            profileData.rank === 'Gold' ? 'bg-[#FFD700] text-[#111] border-[#FFD700]' :
-                            profileData.rank === 'Silver' ? 'bg-[#C0C0C0] text-[#111] border-[#C0C0C0]' :
-                            profileData.rank === 'Bronze' ? 'bg-[#CD7F32] text-white border-[#CD7F32]' :
-                            'bg-[#708090] text-white border-[#708090]'
+                        <div className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 text-[9px] font-bold tracking-[0.2em] uppercase border whitespace-nowrap z-30 shadow-md ${
+                            profileData.rank === 'Platinum' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#E5E4E2] border-[#E5E4E2]' :
+                            profileData.rank === 'Gold' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#D4AF37] border-[#D4AF37]' :
+                            profileData.rank === 'Silver' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#C0C0C0] border-[#C0C0C0]' :
+                            profileData.rank === 'Bronze' ? 'bg-gradient-to-br from-[#222] to-[#000] text-[#CD7F32] border-[#CD7F32]' :
+                            'bg-[#F9F9F9] text-[#555] border-[#E5E5E5]'
                         }`}>
                             {profileData.rank}
                         </div>
