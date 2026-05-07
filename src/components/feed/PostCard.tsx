@@ -30,6 +30,7 @@ interface PostProps {
   postType?: string;
   isPinned?: boolean;
   quotedReview?: any;
+  taggedCast?: any;
 }
 
 export default function PostCard({
@@ -55,6 +56,7 @@ export default function PostCard({
   postType,
   isPinned = false,
   quotedReview,
+  taggedCast,
 }: PostProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -372,6 +374,28 @@ export default function PostCard({
                   <p className="text-[11px] text-[#333333] leading-relaxed line-clamp-3">
                       {quotedReview.content}
                   </p>
+              </div>
+          )}
+
+          {/* Tagged Cast Card */}
+          {taggedCast && (
+              <div className={`mb-4 border border-[#E5E5E5] bg-[#F9F9F9] p-3 flex items-center gap-3 ${localIsLocked ? 'blur-[4px] select-none pointer-events-none' : ''}`}>
+                   <Link href={`/cast/${taggedCast.id}`} className="w-10 h-10 border border-black bg-white overflow-hidden hover:opacity-80 transition-opacity shrink-0">
+                       <img 
+                          src={taggedCast.avatar_url || "/images/no-photo.jpg"} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover" 
+                       />
+                   </Link>
+                   <div className="flex-1 min-w-0">
+                       <span className="text-[9px] text-[#777777] block leading-none mb-1 tracking-widest uppercase">Tagged Cast</span>
+                       <Link href={`/cast/${taggedCast.id}`} className="text-xs font-bold tracking-widest flex items-center gap-1 hover:underline decoration-black underline-offset-4 truncate">
+                          <span className="truncate">{taggedCast.name}</span>
+                          {taggedCast.is_vip && (
+                              <img src="/images/vip-crown.png" alt="VIP" className="h-3 object-contain shrink-0" />
+                          )}
+                       </Link>
+                   </div>
               </div>
           )}
 

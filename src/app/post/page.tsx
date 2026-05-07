@@ -11,6 +11,8 @@ export default function PostCreationPage() {
     const [images, setImages] = useState<File[]>([]);
     const [postType, setPostType] = useState<"全員" | "会員" | "フォロワー">("全員");
     const [targetArea, setTargetArea] = useState<string>("");
+    const [taggedCastId, setTaggedCastId] = useState<string>("");
+    const [storeCasts, setStoreCasts] = useState<any[]>([]);
     const [quotedReviewId, setQuotedReviewId] = useState<string | null>(null);
     const [quotedReview, setQuotedReview] = useState<any>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -33,7 +35,32 @@ export default function PostCreationPage() {
                 fetchQuotedReview(qId);
             }
         }
-    }, []);
+        
+        if (user?.role === 'store' && user.phone) {
+            fetchStoreCasts(user.phone);
+        }
+    }, [user]);
+
+    const fetchStoreCasts = async (phone: string) => {
+        let storeId = null;
+        const { data: profile } = await supabase.from('profiles').select('store_id').eq('username', phone).eq('role', 'admin').maybeSingle();
+        if (profile?.store_id) {
+            storeId = profile.store_id;
+        }
+        
+        if (storeId) {
+            const { data: casts } = await supabase.from('casts').select('login_id').eq('store_id', storeId).eq('status', 'active');
+            if (casts && casts.length > 0) {
+                const loginIds = casts.map(c => c.login_id).filter(Boolean);
+                if (loginIds.length > 0) {
+                    const { data: snsCasts } = await supabase.from('sns_profiles').select('id, name, avatar_url, is_vip').in('phone', loginIds);
+                    if (snsCasts) {
+                        setStoreCasts(snsCasts);
+                    }
+                }
+            }
+        }
+    };
 
     const fetchQuotedReview = async (id: string) => {
         const { data } = await supabase
@@ -100,6 +127,7 @@ export default function PostCreationPage() {
                   images: uploadedUrls,
                   post_type: postType,
                   target_area: targetArea || null,
+                  tagged_cast_id: taggedCastId || null,
                   quoted_review_id: quotedReviewId
               } as any); 
               
@@ -251,6 +279,38 @@ export default function PostCreationPage() {
                     </div>
                 </div>
 
+                {/* Tagged Cast Selection (Store Only) */}
+                {user?.role === 'store' && storeCasts.length > 0 && (
+                    <div className="mb-8">
+                        <span className="text-[10px] font-bold tracking-widest uppercase mb-3 block text-[#777777]">キャストをタグ付け</span>
+                        <select
+                            value={taggedCastId}
+                            onChange={(e) => setTaggedCastId(e.target.value)}
+                            className="w-full bg-[#F9F9F9] border border-[#E5E5E5] p-3 text-[11px] font-bold tracking-widest outline-none focus:border-black transition-colors appearance-none"
+                        >
+                            <option value="">タグ付けしない</option>
+                            {storeCasts.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                        {taggedCastId && (
+                            <div className="mt-3 p-3 border border-[#E5E5E5] flex items-center gap-3">
+                                <img 
+                                    src={storeCasts.find(c => c.id === taggedCastId)?.avatar_url || "/images/no-photo.jpg"} 
+                                    className="w-10 h-10 object-cover border border-[#E5E5E5]" 
+                                    alt="Tagged Cast" 
+                                />
+                                <div>
+                                    <span className="text-[10px] text-[#777777] tracking-widest block mb-0.5">タグ付け先</span>
+                                    <span className="text-xs font-bold tracking-widest">
+                                        {storeCasts.find(c => c.id === taggedCastId)?.name}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Target Area Selection (Admin Only) */}
                 {(user?.role === 'system' || user?.role === 'admin') && (
                     <div className="mb-8">
@@ -386,6 +446,23 @@ export default function PostCreationPage() {
                                         <p className="text-[10px] text-[#555] line-clamp-2 leading-relaxed">
                                             {quotedReview.content}
                                         </p>
+                                    </div>
+                                )}
+                                
+                                {/* Tagged Cast */}
+                                {taggedCastId && (
+                                    <div className="border border-[#E5E5E5] p-3 mt-3 flex items-center gap-2">
+                                        <img 
+                                            src={storeCasts.find(c => c.id === taggedCastId)?.avatar_url || "/images/no-photo.jpg"} 
+                                            className="w-6 h-6 object-cover rounded-full border border-[#E5E5E5]" 
+                                            alt="Tagged Cast" 
+                                        />
+                                        <div>
+                                            <span className="text-[9px] text-[#777777] block leading-none mb-0.5">タグ付け</span>
+                                            <span className="text-[10px] font-bold tracking-widest leading-none">
+                                                {storeCasts.find(c => c.id === taggedCastId)?.name}
+                                            </span>
+                                        </div>
                                     </div>
                                 )}
                             </div>

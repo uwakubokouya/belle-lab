@@ -322,7 +322,8 @@ export default function Home() {
         sns_reviews!sns_posts_quoted_review_id_fkey (
           id, rating, score, visited_date, content, reviewer_id,
           sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
-        )
+        ),
+        tagged_cast:sns_profiles!sns_posts_tagged_cast_id_fkey(id, name, avatar_url, is_vip)
       `)
       .in('cast_id', targetSnsIds);
 
@@ -786,6 +787,7 @@ export default function Home() {
                 storeProfileId={post.storeProfileId}
                 postType={post.post_type}
                 quotedReview={post.sns_reviews}
+                taggedCast={post.tagged_cast}
               />
             ))
           ) : (
