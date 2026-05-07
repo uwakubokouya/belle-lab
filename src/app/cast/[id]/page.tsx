@@ -437,7 +437,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
             id, rating, score, visited_date, content, reviewer_id,
             sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
           ),
-          tagged_cast:sns_profiles!sns_posts_tagged_cast_id_fkey(id, name, avatar_url, is_vip)
+          tagged_cast:sns_profiles!sns_posts_tagged_cast_id_fkey(id, name, avatar_url, is_vip, bio)
         `)
         .eq('cast_id', actualCastId)
         .order('is_pinned', { ascending: false, nullsFirst: false })

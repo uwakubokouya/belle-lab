@@ -323,7 +323,7 @@ export default function Home() {
           id, rating, score, visited_date, content, reviewer_id,
           sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
         ),
-        tagged_cast:sns_profiles!sns_posts_tagged_cast_id_fkey(id, name, avatar_url, is_vip)
+        tagged_cast:sns_profiles!sns_posts_tagged_cast_id_fkey(id, name, avatar_url, is_vip, bio)
       `)
       .in('cast_id', targetSnsIds);
 
