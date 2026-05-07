@@ -181,7 +181,7 @@ export default function MyPage() {
                     </div>
                   )}
                 </div>
-                口コミ審査
+                口コミ管理
               </Link>
             </>
           )}
@@ -200,7 +200,7 @@ export default function MyPage() {
                     </div>
                   )}
                 </div>
-                VIP口コミ審査
+                VIP口コミ管理
               </Link>
             </>
           )}

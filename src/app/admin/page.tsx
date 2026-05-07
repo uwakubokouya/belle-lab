@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-4">
                 <Settings size={24} className="stroke-[1.5]" />
                 <div>
-                  <h3 className="text-sm font-bold tracking-widest">口コミ審査</h3>
+                  <h3 className="text-sm font-bold tracking-widest">口コミ管理</h3>
                   <p className="text-[10px] text-[#777] group-hover:text-[#555] tracking-widest mt-1">口コミの承認・非承認管理</p>
                 </div>
               </div>

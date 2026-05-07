@@ -233,7 +233,7 @@ export default function MypageReviewsPage() {
         <button onClick={() => router.back()} className="mr-4 hover:opacity-70 transition-opacity">
           <ChevronLeft size={24} className="stroke-[1.5]" />
         </button>
-        <h1 className="text-sm font-bold tracking-widest uppercase">口コミ審査</h1>
+        <h1 className="text-sm font-bold tracking-widest uppercase">口コミ管理</h1>
       </header>
 
       {/* Tabs */}
