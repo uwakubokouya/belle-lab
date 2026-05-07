@@ -327,34 +327,57 @@ export default function ReservationPage({ params }: { params: Promise<{ prefectu
             const dPrice = selectedDiscount?.price ? Math.abs(selectedDiscount.price) * -1 : 0;
             const total = cPrice + nPrice + oPrice + dPrice;
 
-            const reservationData = {
-                customer_id: user.id,
-                customer_name: user.name,
-                customer_phone: user.phone || null,
+            const baseDur = Number(selectedCourseItem?.duration) || 60;
+            const optDur = selectedOptions.reduce((sum, o) => sum + (Number(o.duration) || 0), 0);
+            const nomDur = Number(selectedNomination?.duration) || 0;
+            const totalMins = baseDur + optDur + nomDur;
+
+            const [startH, startM] = selectedSlot!.split(':').map(Number);
+            let endH = startH;
+            let endM = startM + totalMins;
+            while (endM >= 60) {
+                endM -= 60;
+                endH += 1;
+            }
+            if (endH >= 24) endH -= 24;
+            const endSlot = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+
+            // cti_customer_id を取得して CTI側と即座に紐付ける
+            let customerId = null;
+            const { data: profile } = await supabase
+                .from('sns_profiles')
+                .select('cti_customer_id')
+                .eq('id', user.id)
+                .single();
+            if (profile && profile.cti_customer_id) {
+                customerId = profile.cti_customer_id;
+            }
+
+            // sns_reservations への保存は廃止し、sales へ直接保存する
+            const { error: salesError } = await supabase.from('sales').insert({
+                is_web_reservation: true,
+                sns_profile_id: user.id,
+                customer_id: customerId, // CTI顧客IDを直接セット
                 cast_id: cast?.id,
                 store_id: cast?.store_id,
-                reserve_date: selectedDate,
-                reserve_time: selectedSlot,
-                course_id: selectedCourseItem?.id,
-                course_name: selectedCourseItem?.name || selectedCourseItem?.label,
-                course_price: cPrice,
+                date: selectedDate,
+                time: selectedSlot, // CTIで使われる時間カラム
+                start_time: selectedSlot,
+                end_time: endSlot,
+                course_type: selectedCourseItem?.name || selectedCourseItem?.label,
+                course_time: baseDur, // コース時間（分数）
+                option_ids: selectedOptions.length > 0 ? selectedOptions.map(o => o.name || o.label) : null,
                 nomination_id: selectedNomination?.id,
-                nomination_name: selectedNomination?.name || selectedNomination?.label,
-                nomination_price: nPrice,
-                options: selectedOptions.length > 0 ? selectedOptions.map(o => ({id: o.id, name: o.name || o.label, price: o.price})) : null,
-                discount_id: selectedDiscount?.id,
-                discount_name: selectedDiscount?.name || selectedDiscount?.label,
-                discount_price: dPrice,
-                total_price: Math.max(0, total),
-                customer_notes: customerNotes,
+                total_amount: Math.max(0, total),
+                notes: customerNotes ? `[Web予約要望] ${customerNotes}` : null,
+                customer_phone: user.phone || null,
+                visit_reason: ['Web予約'], // 来店理由をセット
                 status: 'pending'
-            };
+            });
 
-            const { error } = await supabase.from('sns_reservations').insert(reservationData);
-
-            if (error) {
-                console.error("Reserve Error:", error);
-                setErrorMsg("ご予約の送信に失敗しました。" + error.message);
+            if (salesError) {
+                console.error("Reserve Error:", salesError);
+                setErrorMsg("ご予約の送信に失敗しました。" + salesError.message);
             } else {
                 setIsSuccess(true);
             }
