@@ -181,11 +181,13 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
     const fetchFollowData = async () => {
       // 1. Fetch Profile Data & Handle Dual-ID Mapping
       // The URL 'id' could be an sns_profiles ID or a casts ID.
-      let { data: profile } = await supabase
+      const { data: initialProfile } = await supabase
         .from('sns_profiles')
         .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group, bio, points')
         .eq('id', id)
         .maybeSingle();
+        
+      let profile: any = initialProfile;
 
       let storeCast = null;
 
