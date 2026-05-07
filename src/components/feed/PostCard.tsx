@@ -85,10 +85,41 @@ export default function PostCard({
   useEffect(() => {
      if (taggedCast && taggedCast.id) {
          const fetchScore = async () => {
-             const { data: revs } = await supabase.from('sns_reviews').select('rating').eq('target_cast_id', taggedCast.id).eq('status', 'approved');
+             const { data: revs } = await supabase
+                 .from('sns_reviews')
+                 .select('rating, status, visibility, reviewer_id')
+                 .eq('target_cast_id', taggedCast.id);
+                 
              if (revs && revs.length > 0) {
-                  const avg = revs.reduce((sum, r) => sum + (r.rating || 0), 0) / revs.length;
-                  setTaggedCastScore(avg.toFixed(1));
+                  let finalRevs = revs.filter((r: any) => {
+                       if (r.status === 'rejected') return false;
+                       if (r.status === 'pending') {
+                           return user && user.id === r.reviewer_id;
+                       }
+                       if (r.visibility === 'secret') {
+                           return user && (user.is_vip || isSuperAdmin || user.id === r.reviewer_id);
+                       }
+                       return true;
+                  });
+
+                  if (!user?.is_vip && (!user || !isSuperAdmin)) {
+                       const { data: secretPreview } = await supabase.rpc('get_secret_review_preview', { p_cast_id: taggedCast.id });
+                       if (secretPreview && secretPreview.length > 0 && secretPreview[0].count > 0) {
+                           const count = Number(secretPreview[0].count);
+                           const ratings = secretPreview[0].preview_ratings || [];
+                           for (let i = 0; i < count; i++) {
+                               finalRevs.push({ rating: ratings[i] || 5 } as any);
+                           }
+                       }
+                  }
+
+                  if (finalRevs.length > 0) {
+                       const avg = finalRevs.reduce((sum, r) => sum + (r.rating || 0), 0) / finalRevs.length;
+                       // プロフィールページと合わせるため、Math.round(avg * 10) / 10 を適用してから .toFixed(1)
+                       setTaggedCastScore((Math.round(avg * 10) / 10).toFixed(1));
+                  } else {
+                       setTaggedCastScore(null);
+                  }
              }
          };
          fetchScore();
