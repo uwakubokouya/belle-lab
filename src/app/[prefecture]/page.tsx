@@ -298,7 +298,7 @@ export default function Home() {
     const from = pageNum * POSTS_PER_PAGE;
     const to = from + POSTS_PER_PAGE - 1;
 
-    const { data: postsData } = await supabase
+    let postsQuery = supabase
       .from('sns_posts')
       .select(`
         id,
@@ -307,6 +307,7 @@ export default function Home() {
         created_at,
         cast_id,
         post_type,
+        target_area,
         quoted_review_id,
         sns_profiles!cast_id!inner (
           name,
@@ -319,7 +320,14 @@ export default function Home() {
           sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
         )
       `)
-      .in('cast_id', targetSnsIds)
+      .in('cast_id', targetSnsIds);
+
+    let queryBuilder = postsQuery;
+    if (prefecture && prefecture !== '全国') {
+        queryBuilder = queryBuilder.or(`target_area.is.null,target_area.eq.${prefecture}`);
+    }
+
+    const { data: postsData } = await queryBuilder
       .order('created_at', { ascending: false })
       .range(from, to);
 

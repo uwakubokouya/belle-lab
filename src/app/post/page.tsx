@@ -10,6 +10,7 @@ export default function PostCreationPage() {
     const [content, setContent] = useState("");
     const [images, setImages] = useState<File[]>([]);
     const [postType, setPostType] = useState<"全員" | "会員" | "フォロワー">("全員");
+    const [targetArea, setTargetArea] = useState<string>("");
     const [quotedReviewId, setQuotedReviewId] = useState<string | null>(null);
     const [quotedReview, setQuotedReview] = useState<any>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -98,6 +99,7 @@ export default function PostCreationPage() {
                   content: content.trim(),
                   images: uploadedUrls,
                   post_type: postType,
+                  target_area: targetArea || null,
                   quoted_review_id: quotedReviewId
               } as any); 
               
@@ -248,6 +250,38 @@ export default function PostCreationPage() {
                         ))}
                     </div>
                 </div>
+
+                {/* Target Area Selection (Admin Only) */}
+                {(user?.role === 'system' || user?.role === 'admin') && (
+                    <div className="mb-8">
+                        <span className="text-[10px] font-bold tracking-widest uppercase mb-3 block text-[#777777]">投稿先エリア (運営専用)</span>
+                        <select
+                            value={targetArea}
+                            onChange={(e) => setTargetArea(e.target.value)}
+                            className="w-full bg-[#F9F9F9] border border-[#E5E5E5] p-3 text-[11px] font-bold tracking-widest outline-none focus:border-black transition-colors appearance-none"
+                        >
+                            <option value="">全国 (指定なし)</option>
+                            <optgroup label="北海道・東北">
+                                {["北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島"].map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
+                            <optgroup label="関東">
+                                {["東京", "神奈川", "埼玉", "千葉", "茨城", "栃木", "群馬"].map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
+                            <optgroup label="中部">
+                                {["愛知", "静岡", "岐阜", "三重", "新潟", "富山", "石川", "福井", "山梨", "長野"].map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
+                            <optgroup label="近畿">
+                                {["大阪", "京都", "兵庫", "奈良", "滋賀", "和歌山"].map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
+                            <optgroup label="中国・四国">
+                                {["広島", "岡山", "山口", "鳥取", "島根", "徳島", "香川", "愛媛", "高知"].map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
+                            <optgroup label="九州・沖縄">
+                                {["福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"].map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
+                        </select>
+                    </div>
+                )}
 
                 {/* Divider */}
                 <div className="h-[1px] bg-[#E5E5E5] w-full mb-6"></div>
