@@ -410,22 +410,24 @@ export default function PostCard({
                            />
                        </Link>
                        <div className="flex-1 min-w-0">
-                           <Link href={`/cast/${taggedCast.id}`} className="text-xs font-bold tracking-widest flex items-center gap-1 hover:underline decoration-black underline-offset-4 truncate mb-1">
-                              <span className="truncate">{taggedCast.name}</span>
-                              {taggedCast.is_vip && (
-                                  <img src="/images/vip-crown.png" alt="VIP" className="h-3 object-contain shrink-0" />
-                              )}
-                           </Link>
-                           {taggedCastScore ? (
-                               <div className="flex items-center gap-1 mb-1.5">
-                                   <Star size={10} className="fill-black text-black" />
-                                   <span className="text-[10px] font-bold tracking-widest">{taggedCastScore}</span>
-                               </div>
-                           ) : (
-                               <div className="text-[9px] text-[#777777] mb-1.5 tracking-widest">口コミはまだありません</div>
-                           )}
+                           <div className="flex items-center gap-2 mb-1">
+                               <Link href={`/cast/${taggedCast.id}`} className="text-xs font-bold tracking-widest flex items-center gap-1 hover:underline decoration-black underline-offset-4 truncate">
+                                  <span className="truncate">{taggedCast.name}</span>
+                                  {taggedCast.is_vip && (
+                                      <img src="/images/vip-crown.png" alt="VIP" className="h-3 object-contain shrink-0" />
+                                  )}
+                               </Link>
+                               {taggedCastScore ? (
+                                   <div className="flex items-center gap-0.5 shrink-0">
+                                       <Star size={11} className="fill-[#D4AF37] text-[#D4AF37]" />
+                                       <span className="text-[10px] font-bold tracking-widest text-[#D4AF37]">{taggedCastScore}</span>
+                                   </div>
+                               ) : (
+                                   <div className="text-[9px] text-[#777777] tracking-widest shrink-0">口コミなし</div>
+                               )}
+                           </div>
                            {taggedCast.bio && (
-                               <p className="text-[10px] text-[#555] line-clamp-2 leading-relaxed">
+                               <p className="text-[10px] text-[#555] line-clamp-2 leading-relaxed mt-1">
                                    {taggedCast.bio}
                                </p>
                            )}
