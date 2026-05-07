@@ -1415,12 +1415,11 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                     {/* ランクバッジをアイコンの下（下端中央に重ねる）に配置 */}
                     {profileData.role === 'customer' && profileData.rank && (
                         <div className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 text-[8px] font-bold tracking-widest uppercase border shadow-sm whitespace-nowrap z-30 ${
-                            profileData.rank === 'Diamond' ? 'bg-[#111] text-[#D4AF37] border-[#D4AF37]' :
-                            profileData.rank === 'Platinum' ? 'bg-white text-[#555] border-[#555]' :
-                            profileData.rank === 'Gold' ? 'bg-[#F9F9F9] text-[#B8860B] border-[#B8860B]' :
-                            profileData.rank === 'Silver' ? 'bg-white text-[#777] border-[#CCC]' :
-                            profileData.rank === 'Bronze' ? 'bg-[#FCFCFC] text-[#8C7853] border-[#8C7853]' :
-                            'bg-white text-black border-[#E5E5E5]'
+                            profileData.rank === 'Platinum' ? 'bg-[#E5E4E2] text-[#111] border-[#E5E4E2]' :
+                            profileData.rank === 'Gold' ? 'bg-[#FFD700] text-[#111] border-[#FFD700]' :
+                            profileData.rank === 'Silver' ? 'bg-[#C0C0C0] text-[#111] border-[#C0C0C0]' :
+                            profileData.rank === 'Bronze' ? 'bg-[#CD7F32] text-white border-[#CD7F32]' :
+                            'bg-[#708090] text-white border-[#708090]'
                         }`}>
                             {profileData.rank}
                         </div>

@@ -118,8 +118,14 @@ export default function MyPage() {
                 <p className="text-[10px] text-[#777777] tracking-widest bg-[#F9F9F9] inline-block px-2 py-0.5 border border-[#E5E5E5]">
                   {user?.is_admin ? "ADMIN" : user?.role === "cast" ? "キャスト" : "お客様"}
                 </p>
-                {user?.role === 'customer' && user?.rank && user.rank !== 'Standard' && (
-                  <p className="text-[10px] text-white tracking-widest bg-black inline-block px-2 py-0.5 border border-black">
+                {user?.role === 'customer' && user?.rank && (
+                  <p className={`text-[10px] tracking-widest inline-block px-2 py-0.5 border ${
+                    user.rank === 'Platinum' ? 'bg-[#E5E4E2] text-[#111] border-[#E5E4E2]' :
+                    user.rank === 'Gold' ? 'bg-[#FFD700] text-[#111] border-[#FFD700]' :
+                    user.rank === 'Silver' ? 'bg-[#C0C0C0] text-[#111] border-[#C0C0C0]' :
+                    user.rank === 'Bronze' ? 'bg-[#CD7F32] text-white border-[#CD7F32]' :
+                    'bg-[#708090] text-white border-[#708090]'
+                  }`}>
                     {user.rank}
                   </p>
                 )}
