@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { BarChart3, Bell, ShieldAlert, Settings, X, Search, Trash2, Clock, Users, Database } from "lucide-react";
+import { BarChart3, Bell, ShieldAlert, Settings, X, Search, Trash2, Clock, Users, Database, Star } from "lucide-react";
 import Link from "next/link";
 
 interface AdminHomeContentProps {
@@ -190,7 +190,14 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
     
     const { data: postsData } = await supabase
       .from('sns_posts')
-      .select('*')
+      .select(`
+        *,
+        quoted_review_id,
+        sns_reviews!sns_posts_quoted_review_id_fkey (
+          id, rating, score, visited_date, content, reviewer_id,
+          sns_profiles!sns_reviews_reviewer_id_fkey(name, avatar_url, is_vip)
+        )
+      `)
       .order('created_at', { ascending: false })
       .limit(30);
 
@@ -426,7 +433,38 @@ export default function AdminHomeContent({ activeTab }: AdminHomeContentProps) {
                         })}
                       </div>
                     )}
-                    <p className="text-xs leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap mb-3">{post.content}</p>
+                    
+                    {post.sns_reviews && (
+                        <div className="mb-2 border border-[#E5E5E5] bg-[#F9F9F9] p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Link href={`/cast/${post.sns_reviews.reviewer_id}`} className="w-6 h-6 border border-[#E5E5E5] bg-white overflow-hidden hover:opacity-80 transition-opacity">
+                                    <img 
+                                        src={post.sns_reviews.sns_profiles?.avatar_url || "/images/no-photo.jpg"} 
+                                        alt="Profile" 
+                                        className="w-full h-full object-cover" 
+                                    />
+                                </Link>
+                                <div>
+                                    <Link href={`/cast/${post.sns_reviews.reviewer_id}`} className="text-[9px] font-bold tracking-widest flex items-center gap-1 hover:underline decoration-black underline-offset-4">
+                                        {post.sns_reviews.sns_profiles?.name || "匿名ユーザー"}
+                                        {post.sns_reviews.sns_profiles?.is_vip && (
+                                            <img src="/images/vip-crown.png" alt="VIP" className="h-3 object-contain ml-0.5" />
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1 mb-1.5">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star key={s} size={8} className={s <= post.sns_reviews.rating ? 'fill-black text-black' : 'fill-transparent text-[#E5E5E5]'} />
+                                ))}
+                                <span className="text-[9px] font-bold ml-1">{post.sns_reviews.score}点</span>
+                            </div>
+                            <p className="text-[10px] text-[#333333] leading-relaxed line-clamp-2">
+                                {post.sns_reviews.content}
+                            </p>
+                        </div>
+                    )}
                     
                     <button 
                       onClick={() => deletePost(post.id)}
