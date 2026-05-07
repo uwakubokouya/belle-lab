@@ -305,6 +305,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            .eq('target_cast_id', castIdToFetch)
            .order('created_at', { ascending: false });
 
+         const isAdmin = user && (user.role === 'admin' || (user.role as string) === 'management' || user.role === 'system');
          let finalRevs = (revs || []).filter((r: any) => {
              // 却下されたものは表示しない
              if (r.status === 'rejected') return false;
@@ -316,7 +317,6 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
              
              // 承認済みのVIP限定口コミ（secret）は、VIPユーザー、運営、または書いた本人にしか見せない
              if (r.visibility === 'secret') {
-                 const isAdmin = user && (user.role === 'admin' || (user.role as string) === 'management' || user.role === 'system');
                  return user && (user.is_vip || isAdmin || user.id === r.reviewer_id);
              }
              
@@ -325,7 +325,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
          });
 
          // VIPでない場合、秘密の口コミのプレビュー件数を取得してダミーを追加
-         if (!user?.is_vip && (!user || !user.is_admin)) {
+         if (!user?.is_vip && !isAdmin) {
              const { data: secretPreview } = await supabase.rpc('get_secret_review_preview', { p_cast_id: castIdToFetch });
              if (secretPreview && secretPreview.length > 0 && secretPreview[0].count > 0) {
                  const count = Number(secretPreview[0].count);

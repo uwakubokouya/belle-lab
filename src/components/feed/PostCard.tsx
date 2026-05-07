@@ -104,7 +104,7 @@ export default function PostCard({
                        return true;
                   });
 
-                  if (!user?.is_vip && (!user || !user.is_admin)) {
+                  if (!user?.is_vip && !isAdmin) {
                        const { data: secretPreview } = await supabase.rpc('get_secret_review_preview', { p_cast_id: taggedCast.id });
                        if (secretPreview && secretPreview.length > 0 && secretPreview[0].count > 0) {
                            const count = Number(secretPreview[0].count);
