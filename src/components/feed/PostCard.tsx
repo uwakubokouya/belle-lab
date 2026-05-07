@@ -91,18 +91,20 @@ export default function PostCard({
                  .eq('target_cast_id', taggedCast.id);
                  
              if (revs && revs.length > 0) {
+                  const isAdmin = user && (user.role === 'admin' || (user.role as string) === 'management' || user.role === 'system');
+                  
                   let finalRevs = revs.filter((r: any) => {
                        if (r.status === 'rejected') return false;
                        if (r.status === 'pending') {
                            return user && user.id === r.reviewer_id;
                        }
                        if (r.visibility === 'secret') {
-                           return user && (user.is_vip || isSuperAdmin || user.id === r.reviewer_id);
+                           return user && (user.is_vip || isAdmin || user.id === r.reviewer_id);
                        }
                        return true;
                   });
 
-                  if (!user?.is_vip && (!user || !isSuperAdmin)) {
+                  if (!user?.is_vip && (!user || !user.is_admin)) {
                        const { data: secretPreview } = await supabase.rpc('get_secret_review_preview', { p_cast_id: taggedCast.id });
                        if (secretPreview && secretPreview.length > 0 && secretPreview[0].count > 0) {
                            const count = Number(secretPreview[0].count);
