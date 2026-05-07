@@ -85,16 +85,10 @@ export default function PostCard({
   useEffect(() => {
      if (taggedCast && taggedCast.id) {
          const fetchScore = async () => {
-             const { data: profile } = await supabase.from('sns_profiles').select('phone').eq('id', taggedCast.id).single();
-             if (profile?.phone) {
-                 const { data: actCast } = await supabase.from('casts').select('id').eq('login_id', profile.phone).single();
-                 if (actCast?.id) {
-                     const { data: revs } = await supabase.from('sns_reviews').select('score').eq('target_cast_id', actCast.id).eq('status', 'approved');
-                     if (revs && revs.length > 0) {
-                          const avg = revs.reduce((sum, r) => sum + (r.score || 0), 0) / revs.length;
-                          setTaggedCastScore(avg.toFixed(1));
-                     }
-                 }
+             const { data: revs } = await supabase.from('sns_reviews').select('score').eq('target_cast_id', taggedCast.id).eq('status', 'approved');
+             if (revs && revs.length > 0) {
+                  const avg = revs.reduce((sum, r) => sum + (r.score || 0), 0) / revs.length;
+                  setTaggedCastScore(avg.toFixed(1));
              }
          };
          fetchScore();
@@ -400,7 +394,6 @@ export default function PostCard({
           {/* Tagged Cast Card */}
           {taggedCast && (
               <div className={`mb-4 border border-[#E5E5E5] bg-[#F9F9F9] p-3 flex flex-col gap-2 ${localIsLocked ? 'blur-[4px] select-none pointer-events-none' : ''}`}>
-                   <span className="text-[9px] text-[#777777] leading-none tracking-widest uppercase">Tagged Cast</span>
                    <div className="flex items-start gap-3">
                        <Link href={`/cast/${taggedCast.id}`} className="w-12 h-12 border border-black bg-white overflow-hidden hover:opacity-80 transition-opacity shrink-0">
                            <img 
