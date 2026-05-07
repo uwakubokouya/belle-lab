@@ -507,8 +507,9 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                           .in('id', castIds);
                           
                       const { data: ctiCasts } = await supabase
-                          .rpc('get_cast_names_by_ids', { p_cast_ids: castIds });
-
+                          .from('casts')
+                          .select('id, name')
+                          .in('id', castIds);
                       const profileMap: Record<string, any> = {};
                       if (castProfiles) {
                           castProfiles.forEach((p: any) => {
