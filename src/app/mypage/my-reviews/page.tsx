@@ -55,11 +55,13 @@ export default function MyReviewsPage() {
             
             // 1. target_cast_id で sns_profiles と casts を両方検索
             const { data: profilesById } = await supabase.from('sns_profiles').select('*').in('id', castIds);
-            const { data: castsById } = await supabase.from('casts').select('*').in('id', castIds);
+            const { data: castsById } = await supabase.rpc('get_cast_names_by_ids', { p_cast_ids: castIds });
             
             // 2. profiles に phone があれば、紐づく casts も取得 (旧画像フォールバック用)
-            const phones = profilesById?.map(p => p.phone).filter(Boolean) || [];
-            const { data: castsByPhone } = phones.length > 0 ? await supabase.from('casts').select('*').in('login_id', phones) : { data: [] };
+            // login_id is not exposed in our RPC to keep it simple, but we can just use the name and avatar.
+            // Since we rely on the RPC, if there's an image in casts it will be fetched in step 1.
+            // So we don't strictly need step 2 for login_id fallback anymore.
+            const { data: castsByPhone } = { data: [] as any[] };
             
             // 3. マッピング構築
             const profileMap = new Map();

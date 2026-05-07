@@ -99,7 +99,8 @@ export default function MypageReviewsPage() {
             if (profileCast) {
                 castInfo = profileCast;
             } else {
-                const { data: legacyCast } = await supabase.from('casts').select('name, store_id').eq('id', review.target_cast_id).maybeSingle();
+                const { data: legacyCasts } = await supabase.rpc('get_cast_names_by_ids', { p_cast_ids: [review.target_cast_id] });
+                const legacyCast = legacyCasts && legacyCasts.length > 0 ? legacyCasts[0] : null;
                 if (legacyCast) {
                     castInfo = legacyCast;
                 }

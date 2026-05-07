@@ -506,10 +506,20 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
                           .select('id, name, avatar_url, is_vip')
                           .in('id', castIds);
                           
+                      const { data: ctiCasts } = await supabase
+                          .rpc('get_cast_names_by_ids', { p_cast_ids: castIds });
+
                       const profileMap: Record<string, any> = {};
                       if (castProfiles) {
                           castProfiles.forEach((p: any) => {
                               profileMap[p.id] = p;
+                          });
+                      }
+                      if (ctiCasts) {
+                          ctiCasts.forEach((c: any) => {
+                              if (!profileMap[c.id]) {
+                                  profileMap[c.id] = { name: c.name, avatar_url: null, is_vip: false };
+                              }
                           });
                       }
                       const isAdmin = user && (user.role === 'admin' || (user.role as string) === 'management' || user.role === 'system');
