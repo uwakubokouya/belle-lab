@@ -4,7 +4,7 @@ import Link from 'next/link';
 import PostCard from "@/components/feed/PostCard";
 import { ChevronLeft, MessageCircle, Calendar, Lock, ArrowRight, UserPlus, ArrowLeft, AlertTriangle, CheckSquare, Square, Camera, X, ChevronRight, Heart, Check, Sparkles, Star, Phone, EyeOff } from "lucide-react";
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/providers/UserProvider';
+import { useUser, calculateUserRank } from '@/providers/UserProvider';
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { fetchBusinessEndTime, getLogicalBusinessDate, getAdjustedMinutes, getAdjustedNowMins } from "@/utils/businessTime";
@@ -183,7 +183,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
       // The URL 'id' could be an sns_profiles ID or a casts ID.
       let { data: profile } = await supabase
         .from('sns_profiles')
-        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group, bio')
+        .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group, bio, points')
         .eq('id', id)
         .maybeSingle();
 
@@ -197,7 +197,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
            // Find linked SNS profile by matching phone to login_id
            const { data: linkedProfile } = await supabase
              .from('sns_profiles')
-             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group, bio')
+             .select('id, name, avatar_url, cover_url, accepts_dms, phone, role, is_admin, is_vip, rank, age_group, bio, points')
              .eq('phone', castData.login_id || 'dummy')
              .maybeSingle();
              
@@ -264,7 +264,7 @@ export default function CastProfilePage({ params }: { params: Promise<{ id: stri
         phone: profile?.phone || storeCast?.login_id,
         contactPhone,
         is_vip: profile?.is_vip || false,
-        rank: profile?.rank || 'Standard',
+        rank: profile ? calculateUserRank(profile.points || 0) : (profile?.rank || 'Standard'),
         ageGroup: profile?.age_group || undefined
       }));
 
